@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Chat from './components/Chat';
 import CodeEditor from './components/Editor';
 import Preview from './components/Preview';
@@ -28,8 +28,27 @@ const INITIAL_CODE = `<!DOCTYPE html>
 </body>
 </html>`;
 
+const STORAGE_KEY = 'chathtml-code';
+
 export default function Home() {
   const [code, setCode] = useState(INITIAL_CODE);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // Load code from localStorage on mount
+  useEffect(() => {
+    const savedCode = localStorage.getItem(STORAGE_KEY);
+    if (savedCode) {
+      setCode(savedCode);
+    }
+    setIsLoaded(true);
+  }, []);
+
+  // Save code to localStorage whenever it changes
+  useEffect(() => {
+    if (isLoaded) {
+      localStorage.setItem(STORAGE_KEY, code);
+    }
+  }, [code, isLoaded]);
 
   return (
     <main className="flex h-screen w-full overflow-hidden bg-white">

@@ -23,7 +23,12 @@ ${currentCode}
 When modifying existing code, carefully read the current code and make only the requested changes while preserving the overall structure unless asked to rebuild from scratch.`;
 
   const { response } = await generateText({
-    model: openai('gpt-4o'),
+    model: openai('gpt-5'),
+    providerOptions: {
+      openai: {
+        reasoningEffort: 'high',
+      },
+    },
     system: systemPrompt,
     messages,
   });

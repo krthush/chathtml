@@ -5,6 +5,7 @@ An intuitive AI-powered HTML editor designed for non-technical users to build be
 ## Features
 
 - **AI Chat Interface**: Communicate with an AI assistant to generate and modify HTML code
+- **Image Upload**: Upload images that are automatically hosted and embedded in your HTML
 - **Live Code Editor**: Monaco Editor (VS Code's editor) with syntax highlighting and auto-formatting
 - **Real-time Preview**: Instant preview of your HTML changes
 - **Modern UI**: Beautiful gradient-based design with excellent contrast and readability
@@ -15,6 +16,7 @@ An intuitive AI-powered HTML editor designed for non-technical users to build be
 - **TypeScript**
 - **Tailwind CSS v4**
 - **Vercel AI SDK** (with OpenAI integration)
+- **Vercel Blob Storage** (for image uploads)
 - **Monaco Editor** (VS Code editor)
 - **Lucide React** (Icons)
 
@@ -28,11 +30,18 @@ npm install
 
 ### 2. Set Up Environment Variables
 
-Create a `.env.local` file in the root directory and add your OpenAI API key:
+Create a `.env.local` file in the root directory and add your API keys:
 
 ```env
 OPENAI_API_KEY=sk-your-api-key-here
+BLOB_READ_WRITE_TOKEN=your-vercel-blob-token
 ```
+
+**Getting a Vercel Blob Token:**
+1. Go to [Vercel Dashboard](https://vercel.com/dashboard)
+2. Navigate to Storage → Create → Blob Storage
+3. Create a new blob store
+4. Copy the `BLOB_READ_WRITE_TOKEN` from the store settings
 
 ### 3. Run the Development Server
 
@@ -45,9 +54,10 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 ## How to Use
 
 1. **Chat with AI**: Type your request in the chat interface (e.g., "Create a landing page for a coffee shop")
-2. **AI Generates Code**: The AI will generate HTML code and automatically update the editor
-3. **Edit Manually**: You can also manually edit the code in the middle panel
-4. **Live Preview**: See your changes instantly in the preview panel on the right
+2. **Upload Images**: Click the image icon to upload images. They'll be automatically hosted and available for use
+3. **AI Generates Code**: The AI will generate HTML code with your images and automatically update the editor
+4. **Edit Manually**: You can also manually edit the code in the middle panel
+5. **Live Preview**: See your changes instantly in the preview panel on the right
 
 ## Learn More
 

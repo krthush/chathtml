@@ -2,7 +2,18 @@
 
 import type { ModelMessage } from 'ai';
 import { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Sparkles, CheckCircle2, Maximize2, X } from 'lucide-react';
+import { Send, Bot, User, Sparkles, CheckCircle2, Maximize2, X, ImagePlus } from 'lucide-react';
+
+interface ImageAttachment {
+  name: string;
+  url: string;
+}
+
+interface ExtendedMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  images?: ImageAttachment[];
+}
 
 interface ChatProps {
   onCodeUpdate: (code: string) => void;
@@ -11,11 +22,13 @@ interface ChatProps {
 
 export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
   const [input, setInput] = useState('');
-  const [messages, setMessages] = useState<ModelMessage[]>([]);
+  const [messages, setMessages] = useState<ExtendedMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [modalCode, setModalCode] = useState<{ code: string; lang: string } | null>(null);
+  const [uploadedImages, setUploadedImages] = useState<ImageAttachment[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastProcessedIndex = useRef<number>(-1);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -25,18 +38,69 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
     scrollToBottom();
   }, [messages]);
 
+  // Upload image to Vercel Blob and get URL
+  const uploadImageToService = async (file: File): Promise<ImageAttachment> => {
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      throw new Error(`${file.name} is not an image file`);
+    }
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    const response = await fetch('/api/upload-image', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Upload failed');
+    }
+
+    const data = await response.json();
+    return {
+      name: data.name,
+      url: data.url,
+    };
+  };
+
+  // Handle image upload
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsLoading(true);
+
+    try {
+      const imagePromises = Array.from(files).map(file => uploadImageToService(file));
+      const images = await Promise.all(imagePromises);
+      setUploadedImages(prev => [...prev, ...images]);
+    } catch (error) {
+      console.error('Error uploading images:', error);
+      alert(error instanceof Error ? error.message : 'Failed to upload images');
+    } finally {
+      setIsLoading(false);
+    }
+
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Remove an uploaded image
+  const removeImage = (index: number) => {
+    setUploadedImages(prev => prev.filter((_, i) => i !== index));
+  };
+
   // Extract HTML code from AI messages and update editor
   useEffect(() => {
     if (messages.length > 0 && lastProcessedIndex.current < messages.length - 1) {
       const lastMessage = messages[messages.length - 1];
       
       if (lastMessage && lastMessage.role === 'assistant') {
-        const content = typeof lastMessage.content === 'string' 
-          ? lastMessage.content 
-          : lastMessage.content
-              .filter(part => part.type === 'text')
-              .map(part => part.text)
-              .join('\n');
+        const content = lastMessage.content;
         
         // Look for HTML code blocks
         const codeBlockRegex = /```html\n([\s\S]*?)```/g;
@@ -57,22 +121,31 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
   }, [messages, onCodeUpdate]);
 
   const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+    if ((!input.trim() && uploadedImages.length === 0) || isLoading) return;
 
     const userInput = input;
+    const userImages = [...uploadedImages];
     setInput('');
+    setUploadedImages([]);
     setIsLoading(true);
+
+    // Create user message with images
+    const userMessage: ExtendedMessage = {
+      role: 'user',
+      content: userInput,
+      images: userImages.length > 0 ? userImages : undefined,
+    };
 
     setMessages(currentMessages => [
       ...currentMessages,
-      { role: 'user', content: userInput },
+      userMessage,
     ]);
 
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
         body: JSON.stringify({
-          messages: [...messages, { role: 'user', content: userInput }],
+          messages: [...messages, userMessage],
           currentCode: currentCode,
         }),
       });
@@ -140,24 +213,34 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
                     : 'bg-white text-slate-800 border border-slate-200/50'
                 }`}
               >
-                {typeof message.content === 'string' ? (
-                  <MessageContent 
-                    content={message.content} 
-                    role={message.role}
-                    onCodeClick={setModalCode}
-                  />
-                ) : (
-                  message.content
-                    .filter(part => part.type === 'text')
-                    .map((part, partIndex) => (
-                      <MessageContent 
-                        key={partIndex} 
-                        content={part.text} 
-                        role={message.role}
-                        onCodeClick={setModalCode}
-                      />
-                    ))
+                {/* Display images if present */}
+                {message.images && message.images.length > 0 && (
+                  <div className="mb-2 flex flex-wrap gap-2">
+                    {message.images.map((image, imgIndex) => (
+                      <div key={imgIndex} className="relative">
+                        <img
+                          src={image.url}
+                          alt={image.name}
+                          className="max-w-[200px] max-h-[200px] object-cover rounded-lg border-2 border-white/20"
+                        />
+                        <div className={`text-[9px] px-2 py-0.5 mt-1 rounded ${
+                          message.role === 'user' 
+                            ? 'bg-white/20 text-white' 
+                            : 'bg-slate-100 text-slate-600'
+                        }`}>
+                          {image.name}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 )}
+                
+                {/* Display text content */}
+                <MessageContent 
+                  content={message.content} 
+                  role={message.role}
+                  onCodeClick={setModalCode}
+                />
               </div>
 
               {message.role === 'user' && (
@@ -190,7 +273,47 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
       {/* Input Area */}
       <div className="border-t border-slate-200/50 bg-white/80 backdrop-blur-sm p-4">
         <div className="max-w-3xl mx-auto">
+          {/* Image Preview Area */}
+          {uploadedImages.length > 0 && (
+            <div className="mb-3 flex flex-wrap gap-2">
+              {uploadedImages.map((image, index) => (
+                  <div key={index} className="relative group">
+                    <img
+                      src={image.url}
+                      alt={image.name}
+                      className="w-20 h-20 object-cover rounded-lg border-2 border-slate-200"
+                    />
+                  <button
+                    onClick={() => removeImage(index)}
+                    className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                  <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[9px] px-1 py-0.5 rounded-b-lg truncate">
+                    {image.name}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          
           <div className="relative flex items-center gap-2 bg-white rounded-2xl px-4 py-3 shadow-lg border border-slate-200/50 focus-within:ring-2 focus-within:ring-purple-500/50 focus-within:border-purple-300 transition-all">
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleImageUpload}
+              accept="image/*"
+              multiple
+              className="hidden"
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isLoading}
+              className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:bg-slate-50 disabled:cursor-not-allowed flex items-center justify-center transition-all"
+              title="Upload images"
+            >
+              <ImagePlus className="w-4 h-4 text-slate-600" />
+            </button>
             <input
               value={input}
               onChange={event => setInput(event.target.value)}
@@ -206,7 +329,7 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
             />
             <button
               onClick={handleSend}
-              disabled={!input.trim() || isLoading}
+              disabled={(!input.trim() && uploadedImages.length === 0) || isLoading}
               className="w-9 h-9 rounded-xl bg-linear-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 disabled:from-slate-300 disabled:to-slate-300 disabled:cursor-not-allowed flex items-center justify-center transition-all shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 disabled:shadow-none"
             >
               <Send className="w-4 h-4 text-white" />

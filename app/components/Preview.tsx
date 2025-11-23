@@ -14,7 +14,7 @@ export default function Preview({ code }: PreviewProps) {
 
   return (
     <div className="h-full flex flex-col bg-white">
-      <div className="h-14 px-4 bg-gradient-to-r from-purple-600 to-purple-700 border-b border-purple-600 flex items-center justify-between shadow-md">
+      <div className="h-14 px-4 bg-linear-to-r from-purple-600 to-purple-700 border-b border-purple-600 flex items-center justify-between shadow-md">
         <div className="flex items-center gap-2">
           <Eye className="w-5 h-5 text-white" />
           <span className="text-sm font-bold text-white">Live Preview</span>

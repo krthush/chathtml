@@ -35,7 +35,7 @@ export default function CodeEditor({ code, onChange }: CodeEditorProps) {
 
   return (
     <div className="h-full flex flex-col border-r border-slate-300">
-        <div className="p-3 bg-gradient-to-r from-slate-700 to-slate-800 border-b border-slate-600 flex items-center gap-2 shadow-md">
+        <div className="h-14 px-4 bg-linear-to-r from-slate-700 to-slate-800 border-b border-slate-600 flex items-center gap-2 shadow-md">
             <Code2 className="w-5 h-5 text-white" />
             <span className="text-sm font-bold text-white">HTML Editor</span>
         </div>

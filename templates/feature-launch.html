@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Newsletter</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
+          "Helvetica", "Arial", sans-serif;
+        background-color: #ffffff;
+        color: #000000;
+      }
+
+      .email-container {
+        max-width: 650px;
+        margin: 0 auto;
+        padding: 28px 20px;
+      }
+
+      .logo {
+        margin-bottom: 24px;
+        text-align: center;
+      }
+
+      .logo a {
+        display: inline-block;
+        text-decoration: none;
+      }
+
+      .logo img {
+        height: 48px;
+        width: auto;
+        display: block;
+      }
+
+      .greeting {
+        font-size: 16px;
+        line-height: 1.3;
+        margin-bottom: 16px;
+        color: #333333;
+      }
+
+      .pre-heading {
+        font-size: 14px;
+        line-height: 1.2;
+        margin-bottom: 12px;
+        color: #fcb150;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .feature-title {
+        font-size: 28px;
+        font-weight: 600;
+        margin-bottom: 10px;
+        color: #000000;
+        line-height: 1.15;
+      }
+
+      .feature-description {
+        font-size: 16px;
+        line-height: 1.4;
+        margin-bottom: 16px;
+        color: #333333;
+      }
+
+      .feature-image {
+        margin: 16px 0;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      .feature-image a {
+        display: block;
+        text-decoration: none;
+      }
+
+      .feature-image img {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      .cta-container {
+        text-align: center;
+        margin: 12px 0 20px 0;
+      }
+
+      .cta-button {
+        display: inline-block;
+        background-color: #fcb150;
+        color: #000000 !important;
+        padding: 12px 28px;
+        text-decoration: none !important;
+        border-radius: 6px;
+        font-weight: 500;
+        font-size: 16px;
+        transition: background-color 0.2s;
+      }
+
+      .cta-button:hover {
+        background-color: #fda030;
+        color: #000000 !important;
+      }
+
+      .cta-button:visited,
+      .cta-button:link,
+      .cta-button:active {
+        color: #000000 !important;
+        text-decoration: none !important;
+      }
+
+      .highlights {
+        margin: 24px 0;
+        padding: 0;
+      }
+
+      .highlight-item {
+        margin-bottom: 14px;
+        padding-left: 16px;
+        border-left: 3px solid #fcb150;
+      }
+
+      .highlight-item h3 {
+        font-size: 17px;
+        font-weight: 600;
+        margin: 0 0 4px 0;
+        color: #000000;
+        line-height: 1.3;
+      }
+
+      .highlight-item p {
+        font-size: 15px;
+        line-height: 1.4;
+        margin: 0;
+        color: #333333;
+      }
+
+      .closing {
+        font-size: 16px;
+        line-height: 1.4;
+        margin: 24px 0 12px 0;
+        color: #333333;
+      }
+
+      .signature {
+        font-size: 16px;
+        line-height: 1.4;
+        color: #000000;
+      }
+
+      .signature-name {
+        font-weight: 600;
+      }
+
+      .divider {
+        height: 1px;
+        background-color: #e5e5e5;
+        margin: 20px 0 12px 0;
+        border: none;
+      }
+
+      .footer {
+        font-size: 13px;
+        line-height: 1.4;
+        color: #666666;
+        margin-top: 0;
+      }
+
+      .footer a {
+        color: #000000;
+        text-decoration: none;
+        border-bottom: 1px solid #fcb150;
+      }
+
+      .footer a:hover {
+        color: #fcb150;
+      }
+
+      /* Mobile responsiveness */
+      @media only screen and (max-width: 600px) {
+        .email-container {
+          padding: 16px 14px;
+        }
+
+        .logo {
+          margin-bottom: 16px;
+        }
+
+        .logo img {
+          height: 40px;
+        }
+
+        .feature-title {
+          font-size: 22px;
+          line-height: 1.1;
+        }
+
+        .feature-image {
+          margin: 12px 0;
+        }
+
+        .highlights {
+          margin: 16px 0;
+        }
+
+        .highlight-item {
+          margin-bottom: 12px;
+        }
+
+        .closing {
+          margin: 16px 0 10px 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="email-container">
+      <!-- Logo -->
+      <div class="logo">
+        <a href="https://faved.com" target="_blank">
+          <img
+            src="http://cdn.mcauto-images-production.sendgrid.net/59ca8f413fc56e18/065a242e-b377-4852-872d-2de0778b1713/780x180.png"
+            alt="Company Logo"
+          />
+        </a>
+      </div>
+
+      <!-- Pre-heading -->
+      <div class="pre-heading">New Feature Launch</div>
+
+      <!-- Greeting -->
+      <div class="greeting">Hi {{ insert first_name 'default=there' }},</div>
+
+      <!-- Main Feature Announcement -->
+      <div class="feature-title">We just shipped something you'll love</div>
+
+      <div class="feature-description">
+        <p><b>You can now save multiple creators, all in one go! 🎉</b></p>
+        <p>
+          The best part? It works across teams!! So you can share your saved
+          lists across multiple team mates.
+        </p>
+        <p>See it in action below! 🎬(Notes coming soon 😉)</p>
+        <br />
+      </div>
+
+      <!-- Feature Image/GIF -->
+      <div class="feature-image">
+        <a href="https://faved.com/app/youtube" target="_blank">
+          <img
+            src="http://cdn.mcauto-images-production.sendgrid.net/59ca8f413fc56e18/f333a2b9-1c8a-49c6-82d1-cf27530edfe2/637x360.gif"
+            alt="Feature Preview"
+          />
+        </a>
+      </div>
+
+      <!-- CTA Button -->
+      <div class="cta-container">
+        <a
+          href="https://faved.com/app/youtube"
+          target="_blank"
+          class="cta-button"
+          style="color: #000000 !important; text-decoration: none !important"
+          >Try Now!</a
+        >
+      </div>
+
+      <!-- Feature Highlights -->
+      <div class="highlights">
+        <div class="highlight-item">
+          <h3>Lightning fast performance</h3>
+          <p>
+            We've optimized everything under the hood. You'll notice the
+            difference immediately – pages load 3x faster.
+          </p>
+        </div>
+
+        <div class="highlight-item">
+          <h3>Redesigned interface</h3>
+          <p>
+            A cleaner, more intuitive design that gets out of your way and lets
+            you focus on what matters.
+          </p>
+        </div>
+
+        <div class="highlight-item">
+          <h3>New collaboration features</h3>
+          <p>
+            Working with your team just got a whole lot easier. Real-time
+            updates, seamless sharing, and more.
+          </p>
+        </div>
+      </div>
+
+      <!-- Closing -->
+      <div class="closing">
+        Review and book creators faster than ever book on Faved - the only
+        platform where you’re guaranteed responses from influencers.
+      </div>
+
+      <div class="closing">
+        As always, if you have any feedback or questions, just hit reply – we
+        read every message.
+      </div>
+
+      <!-- Signature -->
+      <div class="signature">
+        <div class="signature-name">The Faved Team</div>
+        <div>Sponsorships made simple.</div>
+      </div>
+
+      <!-- Divider -->
+      <hr class="divider" />
+
+      <!-- Footer -->
+      <div class="footer">
+        <p style="line-height: 1.5; margin: 0 0 10px 0">
+          🔗 <a href="https://faved.com" target="_blank">faved.com</a><br />
+          📍 Faved Ltd, 227 Shepherds Bush Rd, London, W6 7AS
+        </p>
+
+        <p style="font-size: 12px; line-height: 16px; margin: 10px 0">
+          <a
+            class="Unsubscribe--unsubscribeLink"
+            href="{{{unsubscribe}}}"
+            target="_blank"
+            style="font-family: sans-serif; text-decoration: none"
+          >
+            Unsubscribe
+          </a>
+          -
+          <a
+            href="{{{unsubscribe_preferences}}}"
+            target="_blank"
+            class="Unsubscribe--unsubscribePreferences"
+            style="font-family: sans-serif; text-decoration: none"
+          >
+            Unsubscribe Preferences
+          </a>
+        </p>
+        <p style="margin: 6px 0 0 0">© 2025 Faved Ltd. All rights reserved.</p>
+      </div>
+    </div>
+  </body>
+</html>

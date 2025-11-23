@@ -1,6 +1,6 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import Editor, { OnMount } from '@monaco-editor/react';
-import { Code2, Upload, Download, ChevronLeft } from 'lucide-react';
+import { Code2, Upload, Download, ChevronLeft, FileText } from 'lucide-react';
 
 interface CodeEditorProps {
   code: string;
@@ -11,6 +11,15 @@ interface CodeEditorProps {
 
 export default function CodeEditor({ code, onChange, isExpanded, onToggleExpand }: CodeEditorProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showTemplates, setShowTemplates] = useState(false);
+  const templateDropdownRef = useRef<HTMLDivElement>(null);
+
+  const templates = [
+    { name: 'Blank', file: 'blank.html', description: 'Simple starter template' },
+    { name: 'Feature Launch', file: 'feature-launch.html', description: 'Product feature announcement' },
+    { name: 'Landing Page', file: 'landing-page.html', description: 'Modern landing page' },
+    { name: 'Email', file: 'email.html', description: 'Professional email template' },
+  ];
 
   const handleEditorChange = (value: string | undefined) => {
     onChange(value);
@@ -53,6 +62,39 @@ export default function CodeEditor({ code, onChange, isExpanded, onToggleExpand 
     URL.revokeObjectURL(url);
   };
 
+  const handleTemplateSelect = async (templateFile: string) => {
+    try {
+      const response = await fetch(`/api/templates/${templateFile}`);
+      if (response.ok) {
+        const content = await response.text();
+        onChange(content);
+        setShowTemplates(false);
+      } else {
+        alert('Failed to load template');
+      }
+    } catch (error) {
+      console.error('Error loading template:', error);
+      alert('Failed to load template');
+    }
+  };
+
+  // Close dropdown when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (templateDropdownRef.current && !templateDropdownRef.current.contains(event.target as Node)) {
+        setShowTemplates(false);
+      }
+    };
+
+    if (showTemplates) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showTemplates]);
+
   const handleEditorDidMount: OnMount = (editor, monaco) => {
       // Configure editor settings if needed
       monaco.editor.defineTheme('my-theme', {
@@ -87,6 +129,32 @@ export default function CodeEditor({ code, onChange, isExpanded, onToggleExpand 
             <Code2 className="w-5 h-5 text-white" />
           </button>
           <div className="w-px h-8 bg-white/20"></div>
+          <div className="relative" ref={templateDropdownRef}>
+            <button
+              onClick={() => setShowTemplates(!showTemplates)}
+              className="p-2 hover:bg-white/20 rounded-lg transition-all backdrop-blur-sm"
+              title="Templates"
+            >
+              <FileText className="w-5 h-5 text-white" />
+            </button>
+            {showTemplates && (
+              <div className="absolute left-full ml-2 top-0 bg-white rounded-lg shadow-xl border border-slate-200 py-2 w-64 z-50">
+                <div className="px-3 py-2 border-b border-slate-200">
+                  <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Templates</p>
+                </div>
+                {templates.map((template) => (
+                  <button
+                    key={template.file}
+                    onClick={() => handleTemplateSelect(template.file)}
+                    className="w-full text-left px-3 py-2 hover:bg-slate-50 transition-colors"
+                  >
+                    <div className="font-medium text-slate-900 text-sm">{template.name}</div>
+                    <div className="text-xs text-slate-500">{template.description}</div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <button
             onClick={handleUploadClick}
             className="p-2 hover:bg-white/20 rounded-lg transition-all backdrop-blur-sm"
@@ -116,7 +184,7 @@ export default function CodeEditor({ code, onChange, isExpanded, onToggleExpand 
   // Expanded view
   return (
     <div className="h-full flex flex-col border-r border-slate-200/50">
-        <div className="h-14 px-4 bg-linear-to-r from-blue-600 via-cyan-600 to-teal-600 border-b border-blue-500/20 flex items-center justify-between shadow-lg backdrop-blur-sm">
+        <div className="h-14 px-4 bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-600 border-b border-blue-500/20 flex items-center justify-between shadow-lg backdrop-blur-sm">
             <div className="flex items-center gap-2">
               <div className="p-1.5 bg-white/20 rounded-lg backdrop-blur-sm">
                 <Code2 className="w-4 h-4 text-white" />
@@ -124,6 +192,32 @@ export default function CodeEditor({ code, onChange, isExpanded, onToggleExpand 
               <span className="text-sm font-semibold text-white tracking-wide">HTML Editor</span>
             </div>
             <div className="flex items-center gap-1">
+              <div className="relative" ref={templateDropdownRef}>
+                <button
+                  onClick={() => setShowTemplates(!showTemplates)}
+                  className="p-2 hover:bg-white/20 rounded-lg transition-all group backdrop-blur-sm"
+                  title="Templates"
+                >
+                  <FileText className="w-4 h-4 text-white" />
+                </button>
+                {showTemplates && (
+                  <div className="absolute right-0 top-full mt-2 bg-white rounded-lg shadow-xl border border-slate-200 py-2 w-64 z-50">
+                    <div className="px-3 py-2 border-b border-slate-200">
+                      <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Templates</p>
+                    </div>
+                    {templates.map((template) => (
+                      <button
+                        key={template.file}
+                        onClick={() => handleTemplateSelect(template.file)}
+                        className="w-full text-left px-3 py-2 hover:bg-slate-50 transition-colors"
+                      >
+                        <div className="font-medium text-slate-900 text-sm">{template.name}</div>
+                        <div className="text-xs text-slate-500">{template.description}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               <button
                 onClick={handleDownload}
                 className="p-2 hover:bg-white/20 rounded-lg transition-all group backdrop-blur-sm"

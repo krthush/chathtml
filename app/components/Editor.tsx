@@ -17,8 +17,7 @@ export default function CodeEditor({ code, onChange, isExpanded, onToggleExpand 
   const templates = [
     { name: 'Blank', file: 'blank.html', description: 'Simple starter template' },
     { name: 'Feature Launch', file: 'feature-launch.html', description: 'Product feature announcement' },
-    { name: 'Landing Page', file: 'landing-page.html', description: 'Modern landing page' },
-    { name: 'Email', file: 'email.html', description: 'Professional email template' },
+    { name: 'Case Study', file: 'case-study.html', description: 'Creator partnership case study' },
   ];
 
   const handleEditorChange = (value: string | undefined) => {

@@ -1,13 +1,15 @@
 import React, { useRef } from 'react';
 import Editor, { OnMount } from '@monaco-editor/react';
-import { Code2, Upload } from 'lucide-react';
+import { Code2, Upload, Download, ChevronLeft } from 'lucide-react';
 
 interface CodeEditorProps {
   code: string;
   onChange: (value: string | undefined) => void;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
 }
 
-export default function CodeEditor({ code, onChange }: CodeEditorProps) {
+export default function CodeEditor({ code, onChange, isExpanded, onToggleExpand }: CodeEditorProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleEditorChange = (value: string | undefined) => {
@@ -39,6 +41,18 @@ export default function CodeEditor({ code, onChange }: CodeEditorProps) {
     fileInputRef.current?.click();
   };
 
+  const handleDownload = () => {
+    const blob = new Blob([code], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `page-${Date.now()}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const handleEditorDidMount: OnMount = (editor, monaco) => {
       // Configure editor settings if needed
       monaco.editor.defineTheme('my-theme', {
@@ -60,6 +74,46 @@ export default function CodeEditor({ code, onChange }: CodeEditorProps) {
       });
   };
 
+  // Collapsed view
+  if (!isExpanded) {
+    return (
+      <div className="h-full flex flex-col border-r border-slate-200/50 bg-gradient-to-b from-blue-600 via-cyan-600 to-teal-600">
+        <div className="flex flex-col items-center gap-4 pt-3 pb-6">
+          <button
+            onClick={onToggleExpand}
+            className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-all backdrop-blur-sm"
+            title="Open HTML Editor"
+          >
+            <Code2 className="w-5 h-5 text-white" />
+          </button>
+          <div className="w-px h-8 bg-white/20"></div>
+          <button
+            onClick={handleUploadClick}
+            className="p-2 hover:bg-white/20 rounded-lg transition-all backdrop-blur-sm"
+            title="Upload HTML"
+          >
+            <Upload className="w-5 h-5 text-white" />
+          </button>
+          <button
+            onClick={handleDownload}
+            className="p-2 hover:bg-white/20 rounded-lg transition-all backdrop-blur-sm"
+            title="Download HTML"
+          >
+            <Download className="w-5 h-5 text-white" />
+          </button>
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".html,.htm,text/html"
+          onChange={handleFileUpload}
+          className="hidden"
+        />
+      </div>
+    );
+  }
+
+  // Expanded view
   return (
     <div className="h-full flex flex-col border-r border-slate-200/50">
         <div className="h-14 px-4 bg-linear-to-r from-blue-600 via-cyan-600 to-teal-600 border-b border-blue-500/20 flex items-center justify-between shadow-lg backdrop-blur-sm">
@@ -69,13 +123,29 @@ export default function CodeEditor({ code, onChange }: CodeEditorProps) {
               </div>
               <span className="text-sm font-semibold text-white tracking-wide">HTML Editor</span>
             </div>
-            <button
-              onClick={handleUploadClick}
-              className="p-2 hover:bg-white/20 rounded-lg transition-all group backdrop-blur-sm"
-              title="Upload HTML File"
-            >
-              <Upload className="w-4 h-4 text-white" />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={handleDownload}
+                className="p-2 hover:bg-white/20 rounded-lg transition-all group backdrop-blur-sm"
+                title="Download HTML"
+              >
+                <Download className="w-4 h-4 text-white" />
+              </button>
+              <button
+                onClick={handleUploadClick}
+                className="p-2 hover:bg-white/20 rounded-lg transition-all group backdrop-blur-sm"
+                title="Upload HTML File"
+              >
+                <Upload className="w-4 h-4 text-white" />
+              </button>
+              <button
+                onClick={onToggleExpand}
+                className="p-2 hover:bg-white/20 rounded-lg transition-all group backdrop-blur-sm"
+                title="Close Editor"
+              >
+                <ChevronLeft className="w-4 h-4 text-white" />
+              </button>
+            </div>
             <input
               ref={fileInputRef}
               type="file"

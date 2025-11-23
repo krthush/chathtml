@@ -33,6 +33,7 @@ const STORAGE_KEY = 'chathtml-code';
 export default function Home() {
   const [code, setCode] = useState(INITIAL_CODE);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isEditorExpanded, setIsEditorExpanded] = useState(false);
 
   // Load code from localStorage on mount
   useEffect(() => {
@@ -58,10 +59,12 @@ export default function Home() {
       </div>
 
       {/* Middle Panel: Editor */}
-      <div className="w-1/3 min-w-[300px] h-full">
+      <div className={`h-full transition-all duration-300 ${isEditorExpanded ? 'w-1/3 min-w-[300px]' : 'w-[60px]'}`}>
         <CodeEditor 
           code={code} 
-          onChange={(newCode) => setCode(newCode || '')} 
+          onChange={(newCode) => setCode(newCode || '')}
+          isExpanded={isEditorExpanded}
+          onToggleExpand={() => setIsEditorExpanded(!isEditorExpanded)}
         />
       </div>
 

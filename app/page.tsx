@@ -67,7 +67,7 @@ export default function Home() {
 
       {/* Right Panel: Preview */}
       <div className="flex-1 h-full">
-        <Preview code={code} />
+        <Preview code={code} onChange={setCode} />
       </div>
     </main>
   );

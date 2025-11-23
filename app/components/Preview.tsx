@@ -1,16 +1,97 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Eye, Smartphone, Monitor, X } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { Eye, Smartphone, Monitor, X, Save } from 'lucide-react';
 
 interface PreviewProps {
   code: string;
+  onChange?: (newCode: string) => void;
 }
 
 type ViewMode = 'mobile' | 'desktop' | null;
 
-export default function Preview({ code }: PreviewProps) {
+export default function Preview({ code, onChange }: PreviewProps) {
   const [viewMode, setViewMode] = useState<ViewMode>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [pendingHtml, setPendingHtml] = useState<string | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  // Setup iframe for editing (always editable)
+  const setupEditableIframe = useCallback(() => {
+    if (!iframeRef.current) return;
+
+    const iframe = iframeRef.current;
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+    
+    if (!iframeDoc) return;
+
+    // Make the body contenteditable
+    const body = iframeDoc.body;
+    if (body) {
+      body.contentEditable = 'true';
+      body.style.outline = 'none';
+      body.style.cursor = 'text';
+      
+      // Listen for changes
+      const handleInput = () => {
+        const html = iframeDoc.documentElement.outerHTML;
+        // Clean up the HTML by removing contenteditable attribute
+        const cleanedHtml = html.replace(/\scontenteditable="true"/gi, '');
+        setPendingHtml(cleanedHtml);
+        setHasUnsavedChanges(true);
+      };
+
+      body.addEventListener('input', handleInput);
+      
+      // Cleanup
+      return () => {
+        body.removeEventListener('input', handleInput);
+      };
+    }
+  }, []);
+
+  // Setup editable mode when iframe loads
+  useEffect(() => {
+    if (!iframeRef.current) return;
+
+    const iframe = iframeRef.current;
+    const handleLoad = () => {
+      setupEditableIframe();
+    };
+
+    iframe.addEventListener('load', handleLoad);
+    // Also try to setup immediately in case already loaded
+    setupEditableIframe();
+
+    return () => {
+      iframe.removeEventListener('load', handleLoad);
+    };
+  }, [setupEditableIframe]);
+
+  // Reset unsaved changes when code changes externally
+  useEffect(() => {
+    setHasUnsavedChanges(false);
+    setPendingHtml(null);
+  }, [code]);
+
+  // Save changes
+  const handleSave = () => {
+    if (pendingHtml && onChange) {
+      onChange(pendingHtml);
+      setHasUnsavedChanges(false);
+      setPendingHtml(null);
+    }
+  };
+
+  // Discard changes and reload
+  const handleDiscard = () => {
+    setHasUnsavedChanges(false);
+    setPendingHtml(null);
+    // Force iframe reload by updating key
+    if (iframeRef.current) {
+      iframeRef.current.srcdoc = code;
+    }
+  };
 
   return (
     <div className="h-full flex flex-col bg-white">
@@ -20,8 +101,29 @@ export default function Preview({ code }: PreviewProps) {
             <Eye className="w-4 h-4 text-white" />
           </div>
           <span className="text-sm font-semibold text-white tracking-wide">Live Preview</span>
+          <span className="text-xs bg-white/20 text-white px-2 py-0.5 rounded-full backdrop-blur-sm">
+            Editable
+          </span>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
+          {hasUnsavedChanges && (
+            <div className="flex items-center gap-2 mr-2 bg-white/20 rounded-xl px-3 py-1.5 backdrop-blur-sm">
+              <span className="text-xs text-white font-medium">Unsaved changes</span>
+              <button
+                onClick={handleDiscard}
+                className="text-xs text-white/80 hover:text-white underline"
+              >
+                Discard
+              </button>
+              <button
+                onClick={handleSave}
+                className="flex items-center gap-1.5 bg-white text-orange-600 hover:bg-white/90 px-3 py-1 rounded-lg text-xs font-semibold transition-all shadow-lg"
+              >
+                <Save className="w-3 h-3" />
+                Save
+              </button>
+            </div>
+          )}
           <button
             onClick={() => setViewMode('mobile')}
             className="p-2 hover:bg-white/20 rounded-lg transition-all group backdrop-blur-sm"
@@ -40,10 +142,11 @@ export default function Preview({ code }: PreviewProps) {
       </div>
       <div className="flex-1 relative bg-slate-50">
         <iframe
+          ref={iframeRef}
           title="preview"
           srcDoc={code}
           className="w-full h-full border-none bg-white"
-          sandbox="allow-scripts" // Be careful with this in production
+          sandbox="allow-scripts allow-same-origin" // allow-same-origin needed for contenteditable
         />
       </div>
 

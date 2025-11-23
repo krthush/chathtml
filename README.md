@@ -7,7 +7,8 @@ An intuitive AI-powered HTML editor designed for non-technical users to build be
 - **AI Chat Interface**: Communicate with an AI assistant to generate and modify HTML code
 - **Image Upload**: Upload images that are automatically hosted and embedded in your HTML
 - **Live Code Editor**: Monaco Editor (VS Code's editor) with syntax highlighting and auto-formatting
-- **Real-time Preview**: Instant preview of your HTML changes
+- **Editable Preview**: Click to edit text directly in the preview - changes sync back to the code editor
+- **Real-time Preview**: Instant preview of your HTML changes with mobile/desktop view modes
 - **Modern UI**: Beautiful gradient-based design with excellent contrast and readability
 
 ## Tech Stack
@@ -56,8 +57,10 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 1. **Chat with AI**: Type your request in the chat interface (e.g., "Create a landing page for a coffee shop")
 2. **Upload Images**: Click the image icon to upload images. They'll be automatically hosted and available for use
 3. **AI Generates Code**: The AI will generate HTML code with your images and automatically update the editor
-4. **Edit Manually**: You can also manually edit the code in the middle panel
-5. **Live Preview**: See your changes instantly in the preview panel on the right
+4. **Edit in Code**: Manually edit the code in the middle panel using the Monaco editor
+5. **Edit in Preview**: Click anywhere in the preview to edit text directly! The preview is naturally editable
+6. **Save Changes**: After editing in preview, click "Save" to update the code editor (or "Discard" to undo with Ctrl+Z)
+7. **View Modes**: Test your page in mobile or desktop preview modes
 
 ## Learn More
 

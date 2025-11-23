@@ -91,48 +91,53 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="flex flex-col h-full bg-linear-to-br from-slate-50 via-blue-50/30 to-purple-50/30">
       {/* Header */}
-      <div className="h-14 px-4 bg-linear-to-r from-emerald-600 to-emerald-700 border-b border-emerald-600 flex items-center gap-2 shadow-md">
-        <Sparkles className="w-5 h-5 text-white" />
-        <span className="text-sm font-bold text-white">AI Chat</span>
+      <div className="h-14 px-4 bg-linear-to-r from-violet-600 via-purple-600 to-fuchsia-600 border-b border-purple-500/20 flex items-center gap-2 shadow-lg backdrop-blur-sm">
+        <div className="p-1.5 bg-white/20 rounded-lg backdrop-blur-sm">
+          <Sparkles className="w-4 h-4 text-white" />
+        </div>
+        <span className="text-sm font-semibold text-white tracking-wide">AI Assistant</span>
       </div>
 
       {/* Messages Container */}
       <div className="flex-1 overflow-y-auto">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center p-8">
-            <div className="w-16 h-16 rounded-full bg-linear-to-br from-emerald-400 to-emerald-600 flex items-center justify-center mb-4 shadow-lg">
-              <Bot className="w-9 h-9 text-white" />
+            <div className="relative">
+              <div className="absolute inset-0 bg-linear-to-r from-violet-400 to-fuchsia-400 rounded-full blur-xl opacity-30 animate-pulse"></div>
+              <div className="relative w-16 h-16 rounded-2xl bg-linear-to-br from-violet-500 via-purple-500 to-fuchsia-500 flex items-center justify-center mb-4 shadow-xl">
+                <Bot className="w-8 h-8 text-white" />
+              </div>
             </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+            <h3 className="text-xl font-bold bg-linear-to-r from-violet-600 to-fuchsia-600 bg-clip-text text-transparent mb-2">
               How can I help you today?
             </h3>
-            <p className="text-gray-500 text-sm max-w-sm">
+            <p className="text-slate-600 text-sm max-w-sm leading-relaxed">
               Ask me to create or modify HTML pages, and I'll help you build beautiful web content.
             </p>
           </div>
         )}
 
-        <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
+        <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
           {messages.map((message, index) => (
             <div
               key={`${message.role}-${index}`}
-              className={`flex gap-4 ${
+              className={`flex gap-3 ${
                 message.role === 'user' ? 'justify-end' : 'justify-start'
               }`}
             >
               {message.role === 'assistant' && (
-                <div className="w-8 h-8 rounded-full bg-linear-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shrink-0 shadow-sm">
-                  <Bot className="w-5 h-5 text-white" />
+                <div className="w-8 h-8 rounded-xl bg-linear-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center shrink-0 shadow-lg shadow-purple-500/30">
+                  <Bot className="w-4.5 h-4.5 text-white" />
                 </div>
               )}
               
               <div
-                className={`rounded-2xl px-4 py-3 max-w-[80%] ${
+                className={`rounded-2xl px-4 py-3 max-w-[80%] shadow-md ${
                   message.role === 'user'
-                    ? 'bg-gray-900 text-white'
-                    : 'bg-gray-100 text-gray-900'
+                    ? 'bg-linear-to-br from-violet-600 to-fuchsia-600 text-white shadow-purple-500/30'
+                    : 'bg-white text-slate-800 border border-slate-200/50'
                 }`}
               >
                 {typeof message.content === 'string' ? (
@@ -156,23 +161,23 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
               </div>
 
               {message.role === 'user' && (
-                <div className="w-8 h-8 rounded-full bg-linear-to-br from-blue-500 to-blue-600 flex items-center justify-center shrink-0 shadow-sm">
-                  <User className="w-5 h-5 text-white" />
+                <div className="w-8 h-8 rounded-xl bg-linear-to-br from-blue-500 to-cyan-500 flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/30">
+                  <User className="w-4.5 h-4.5 text-white" />
                 </div>
               )}
             </div>
           ))}
 
           {isLoading && (
-            <div className="flex gap-4 justify-start">
-              <div className="w-8 h-8 rounded-full bg-linear-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shrink-0 shadow-sm">
-                <Bot className="w-5 h-5 text-white" />
+            <div className="flex gap-3 justify-start">
+              <div className="w-8 h-8 rounded-xl bg-linear-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center shrink-0 shadow-lg shadow-purple-500/30">
+                <Bot className="w-4.5 h-4.5 text-white" />
               </div>
-              <div className="rounded-2xl px-4 py-3 bg-gray-100">
+              <div className="rounded-2xl px-4 py-3 bg-white border border-slate-200/50 shadow-md">
                 <div className="flex gap-1.5">
-                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                  <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                  <span className="w-2 h-2 bg-linear-to-r from-violet-500 to-fuchsia-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                  <span className="w-2 h-2 bg-linear-to-r from-violet-500 to-fuchsia-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                  <span className="w-2 h-2 bg-linear-to-r from-violet-500 to-fuchsia-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
                 </div>
               </div>
             </div>
@@ -183,9 +188,9 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
       </div>
 
       {/* Input Area */}
-      <div className="border-t border-gray-200 bg-white p-4">
+      <div className="border-t border-slate-200/50 bg-white/80 backdrop-blur-sm p-4">
         <div className="max-w-3xl mx-auto">
-          <div className="relative flex items-center gap-2 bg-gray-100 rounded-3xl px-4 py-2 focus-within:ring-2 focus-within:ring-emerald-500 transition-all">
+          <div className="relative flex items-center gap-2 bg-white rounded-2xl px-4 py-3 shadow-lg border border-slate-200/50 focus-within:ring-2 focus-within:ring-purple-500/50 focus-within:border-purple-300 transition-all">
             <input
               value={input}
               onChange={event => setInput(event.target.value)}
@@ -195,20 +200,20 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
                   handleSend();
                 }
               }}
-              placeholder="Message ChatHTML..."
+              placeholder="Ask me anything..."
               disabled={isLoading}
-              className="flex-1 bg-transparent border-none outline-none text-gray-900 placeholder-gray-500 text-[15px] disabled:opacity-50"
+              className="flex-1 bg-transparent border-none outline-none text-slate-800 placeholder-slate-400 text-[15px] disabled:opacity-50"
             />
             <button
               onClick={handleSend}
               disabled={!input.trim() || isLoading}
-              className="w-8 h-8 rounded-full bg-gray-900 hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
+              className="w-9 h-9 rounded-xl bg-linear-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 disabled:from-slate-300 disabled:to-slate-300 disabled:cursor-not-allowed flex items-center justify-center transition-all shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 disabled:shadow-none"
             >
               <Send className="w-4 h-4 text-white" />
             </button>
           </div>
-          <p className="text-xs text-gray-400 text-center mt-2">
-            Press Enter to send, Shift + Enter for new line
+          <p className="text-xs text-slate-400 text-center mt-2">
+            Press Enter to send • Shift + Enter for new line
           </p>
         </div>
       </div>
@@ -216,42 +221,42 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
       {/* Code Modal */}
       {modalCode && (
         <div 
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
           onClick={() => setModalCode(null)}
         >
           <div 
-            className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[80vh] flex flex-col"
+            className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[80vh] flex flex-col border border-slate-200"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+            <div className="flex items-center justify-between p-4 border-b border-slate-200 bg-linear-to-r from-slate-50 to-white">
               <div className="flex items-center gap-2">
-                <div className="text-sm font-semibold text-gray-900 uppercase">{modalCode.lang}</div>
-                <span className="text-xs text-gray-500">Full Code</span>
+                <div className="text-sm font-semibold bg-linear-to-r from-violet-600 to-fuchsia-600 bg-clip-text text-transparent uppercase">{modalCode.lang}</div>
+                <span className="text-xs text-slate-500">Full Code</span>
               </div>
               <button
                 onClick={() => setModalCode(null)}
-                className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-1 hover:bg-slate-100 rounded-lg transition-colors"
               >
-                <X className="w-5 h-5 text-gray-500" />
+                <X className="w-5 h-5 text-slate-500 hover:text-slate-700" />
               </button>
             </div>
-            <div className="flex-1 overflow-auto p-4 bg-gray-900">
-              <pre className="text-gray-100 text-sm font-mono whitespace-pre-wrap">
+            <div className="flex-1 overflow-auto p-4 bg-slate-900">
+              <pre className="text-slate-100 text-sm font-mono whitespace-pre-wrap">
                 {modalCode.code}
               </pre>
             </div>
-            <div className="p-4 border-t border-gray-200 bg-gray-50 flex justify-end gap-2">
+            <div className="p-4 border-t border-slate-200 bg-linear-to-r from-slate-50 to-white flex justify-end gap-2">
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(modalCode.code);
                 }}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 transition-all shadow-sm hover:shadow"
               >
                 Copy Code
               </button>
               <button
                 onClick={() => setModalCode(null)}
-                className="px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-white bg-linear-to-r from-violet-600 to-fuchsia-600 rounded-xl hover:from-violet-700 hover:to-fuchsia-700 transition-all shadow-lg shadow-purple-500/30"
               >
                 Close
               </button>
@@ -286,13 +291,13 @@ function MessageContent({
             return (
               <div key={i} className="my-3 -mx-1">
                 <div 
-                  className="bg-gray-900 text-gray-100 rounded-lg p-3 text-xs font-mono overflow-hidden cursor-pointer hover:ring-2 hover:ring-emerald-500 transition-all group relative"
+                  className="bg-slate-900 text-slate-100 rounded-xl p-3 text-xs font-mono overflow-hidden cursor-pointer hover:ring-2 hover:ring-purple-500 transition-all group relative shadow-lg"
                   onClick={() => onCodeClick({ code: trimmedCode, lang: lang || 'code' })}
                 >
                   {lang && (
-                    <div className="text-gray-400 mb-2 text-[10px] uppercase font-bold flex items-center justify-between">
-                      <span>{lang}</span>
-                      <div className="flex items-center gap-1 text-gray-500 group-hover:text-emerald-400 transition-colors">
+                    <div className="text-slate-400 mb-2 text-[10px] uppercase font-bold flex items-center justify-between">
+                      <span className="bg-linear-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent">{lang}</span>
+                      <div className="flex items-center gap-1 text-slate-500 group-hover:text-purple-400 transition-colors">
                         <Maximize2 className="w-3 h-3" />
                         <span className="text-[9px]">Click to expand</span>
                       </div>
@@ -301,12 +306,12 @@ function MessageContent({
                   <pre className="whitespace-pre-wrap max-h-[150px] overflow-hidden relative">
                     {trimmedCode}
                     {trimmedCode.split('\n').length > 8 && (
-                      <div className="absolute bottom-0 left-0 right-0 h-12 bg-linear-to-t from-gray-900 to-transparent"></div>
+                      <div className="absolute bottom-0 left-0 right-0 h-12 bg-linear-to-t from-slate-900 to-transparent"></div>
                     )}
                   </pre>
                 </div>
                 {lang === 'html' && (
-                  <div className="flex items-center gap-1 text-xs text-emerald-600 mt-2 font-medium">
+                  <div className="flex items-center gap-1 text-xs text-purple-600 mt-2 font-medium">
                     <CheckCircle2 className="w-3 h-3" />
                     <span>Code updated in editor</span>
                   </div>

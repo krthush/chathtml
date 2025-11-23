@@ -34,10 +34,12 @@ export default function CodeEditor({ code, onChange }: CodeEditorProps) {
   };
 
   return (
-    <div className="h-full flex flex-col border-r border-slate-300">
-        <div className="h-14 px-4 bg-linear-to-r from-slate-700 to-slate-800 border-b border-slate-600 flex items-center gap-2 shadow-md">
-            <Code2 className="w-5 h-5 text-white" />
-            <span className="text-sm font-bold text-white">HTML Editor</span>
+    <div className="h-full flex flex-col border-r border-slate-200/50">
+        <div className="h-14 px-4 bg-linear-to-r from-blue-600 via-cyan-600 to-teal-600 border-b border-blue-500/20 flex items-center gap-2 shadow-lg backdrop-blur-sm">
+            <div className="p-1.5 bg-white/20 rounded-lg backdrop-blur-sm">
+              <Code2 className="w-4 h-4 text-white" />
+            </div>
+            <span className="text-sm font-semibold text-white tracking-wide">HTML Editor</span>
         </div>
         <div className="flex-1 relative bg-slate-50">
              <Editor

@@ -16,7 +16,7 @@ export default function CodeEditor({ code, onChange, isExpanded, onToggleExpand 
 
   const templates = [
     { name: 'Blank', file: 'blank.html', description: 'Simple starter template' },
-    { name: 'Feature Launch', file: 'feature-launch.html', description: 'Product feature announcement' },
+    { name: 'Feature Launch', file: 'feature-launch.html', description: 'Suitable for newsletters too!' },
     { name: 'Case Study', file: 'case-study.html', description: 'Creator partnership case study' },
   ];
 
@@ -128,6 +128,13 @@ export default function CodeEditor({ code, onChange, isExpanded, onToggleExpand 
             <Code2 className="w-5 h-5 text-white" />
           </button>
           <div className="w-px h-8 bg-white/20"></div>
+          <button
+            onClick={handleUploadClick}
+            className="p-2 hover:bg-white/20 rounded-lg transition-all backdrop-blur-sm"
+            title="Upload HTML"
+          >
+            <Upload className="w-5 h-5 text-white" />
+          </button>
           <div className="relative" ref={templateDropdownRef}>
             <button
               onClick={() => setShowTemplates(!showTemplates)}
@@ -154,13 +161,6 @@ export default function CodeEditor({ code, onChange, isExpanded, onToggleExpand 
               </div>
             )}
           </div>
-          <button
-            onClick={handleUploadClick}
-            className="p-2 hover:bg-white/20 rounded-lg transition-all backdrop-blur-sm"
-            title="Upload HTML"
-          >
-            <Upload className="w-5 h-5 text-white" />
-          </button>
           <button
             onClick={handleDownload}
             className="p-2 hover:bg-white/20 rounded-lg transition-all backdrop-blur-sm"
@@ -191,6 +191,13 @@ export default function CodeEditor({ code, onChange, isExpanded, onToggleExpand 
               <span className="text-sm font-semibold text-white tracking-wide">HTML Editor</span>
             </div>
             <div className="flex items-center gap-1">
+              <button
+                onClick={handleUploadClick}
+                className="p-2 hover:bg-white/20 rounded-lg transition-all group backdrop-blur-sm"
+                title="Upload HTML File"
+              >
+                <Upload className="w-4 h-4 text-white" />
+              </button>
               <div className="relative" ref={templateDropdownRef}>
                 <button
                   onClick={() => setShowTemplates(!showTemplates)}
@@ -223,13 +230,6 @@ export default function CodeEditor({ code, onChange, isExpanded, onToggleExpand 
                 title="Download HTML"
               >
                 <Download className="w-4 h-4 text-white" />
-              </button>
-              <button
-                onClick={handleUploadClick}
-                className="p-2 hover:bg-white/20 rounded-lg transition-all group backdrop-blur-sm"
-                title="Upload HTML File"
-              >
-                <Upload className="w-4 h-4 text-white" />
               </button>
               <button
                 onClick={onToggleExpand}

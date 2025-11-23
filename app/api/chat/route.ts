@@ -1,4 +1,4 @@
-import { openai } from '@ai-sdk/openai';
+import { anthropic } from '@ai-sdk/anthropic';
 import { generateText, type ModelMessage } from 'ai';
 
 interface ImageAttachment {
@@ -58,7 +58,7 @@ When the user provides images:
 When modifying existing code, carefully read the current code and make only the requested changes while preserving the overall structure unless asked to rebuild from scratch.`;
 
   const { response } = await generateText({
-    model: openai('gpt-4o'),
+    model: anthropic('claude-sonnet-4-5-20250929'),
     system: systemPrompt,
     messages: processedMessages as ModelMessage[],
   });

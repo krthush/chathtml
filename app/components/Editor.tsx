@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import Editor, { OnMount } from '@monaco-editor/react';
-import { Code2, Upload, Download, ChevronLeft, FileText, Share2, X, Check } from 'lucide-react';
+import { Code2, Upload, Download, ChevronLeft, ChevronRight, Share2, X, Check } from 'lucide-react';
 
 interface CodeEditorProps {
   code: string;
@@ -11,18 +11,10 @@ interface CodeEditorProps {
 
 export default function CodeEditor({ code, onChange, isExpanded, onToggleExpand }: CodeEditorProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [showTemplates, setShowTemplates] = useState(false);
-  const templateDropdownRef = useRef<HTMLDivElement>(null);
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
   const [isSharing, setIsSharing] = useState(false);
   const [copied, setCopied] = useState(false);
-
-  const templates = [
-    { name: 'Blank', file: 'blank.html', description: 'Simple starter template' },
-    { name: 'Feature Launch', file: 'feature-launch.html', description: 'Suitable for newsletters too!' },
-    { name: 'Case Study', file: 'case-study.html', description: 'Creator partnership case study' },
-  ];
 
   const handleEditorChange = (value: string | undefined) => {
     onChange(value);
@@ -63,22 +55,6 @@ export default function CodeEditor({ code, onChange, isExpanded, onToggleExpand 
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  };
-
-  const handleTemplateSelect = async (templateFile: string) => {
-    try {
-      const response = await fetch(`/api/templates/${templateFile}`);
-      if (response.ok) {
-        const content = await response.text();
-        onChange(content);
-        setShowTemplates(false);
-      } else {
-        alert('Failed to load template');
-      }
-    } catch (error) {
-      console.error('Error loading template:', error);
-      alert('Failed to load template');
-    }
   };
 
   const handleShare = async () => {
@@ -122,23 +98,6 @@ export default function CodeEditor({ code, onChange, isExpanded, onToggleExpand 
     setShowShareModal(false);
     setCopied(false);
   };
-
-  // Close dropdown when clicking outside
-  React.useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (templateDropdownRef.current && !templateDropdownRef.current.contains(event.target as Node)) {
-        setShowTemplates(false);
-      }
-    };
-
-    if (showTemplates) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showTemplates]);
 
   const handleEditorDidMount: OnMount = (editor, monaco) => {
       // Configure editor settings if needed
@@ -231,32 +190,6 @@ export default function CodeEditor({ code, onChange, isExpanded, onToggleExpand 
           >
             <Upload className="w-5 h-5 text-white" />
           </button>
-          <div className="relative" ref={templateDropdownRef}>
-            <button
-              onClick={() => setShowTemplates(!showTemplates)}
-              className="p-2 hover:bg-white/20 rounded-lg transition-all backdrop-blur-sm"
-              title="Templates"
-            >
-              <FileText className="w-5 h-5 text-white" />
-            </button>
-            {showTemplates && (
-              <div className="absolute top-full mt-2 md:left-full md:top-0 md:ml-2 md:mt-0 left-1/2 -translate-x-1/2 md:translate-x-0 bg-white rounded-lg shadow-xl border border-slate-200 py-2 w-64 z-[9999]">
-                <div className="px-3 py-2 border-b border-slate-200">
-                  <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Templates</p>
-                </div>
-                {templates.map((template) => (
-                  <button
-                    key={template.file}
-                    onClick={() => handleTemplateSelect(template.file)}
-                    className="w-full text-left px-3 py-2 hover:bg-slate-50 transition-colors"
-                  >
-                    <div className="font-medium text-slate-900 text-sm">{template.name}</div>
-                    <div className="text-xs text-slate-500">{template.description}</div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
           <button
             onClick={handleDownload}
             className="p-2 hover:bg-white/20 rounded-lg transition-all backdrop-blur-sm"
@@ -272,6 +205,14 @@ export default function CodeEditor({ code, onChange, isExpanded, onToggleExpand 
             title="Share Code"
           >
             <Share2 className="w-5 h-5 text-white" />
+          </button>
+          <div className="h-px w-4 md:h-8 md:w-px bg-white/20"></div>
+          <button
+            onClick={onToggleExpand}
+            className="p-2 hover:bg-white/20 rounded-lg transition-all backdrop-blur-sm"
+            title="Expand Editor"
+          >
+            <ChevronRight className="w-5 h-5 text-white" />
           </button>
         </div>
         <input
@@ -310,32 +251,6 @@ export default function CodeEditor({ code, onChange, isExpanded, onToggleExpand 
               >
                 <Upload className="w-4 h-4 text-white" />
               </button>
-              <div className="relative" ref={templateDropdownRef}>
-                <button
-                  onClick={() => setShowTemplates(!showTemplates)}
-                  className="p-2 hover:bg-white/20 rounded-lg transition-all group backdrop-blur-sm"
-                  title="Templates"
-                >
-                  <FileText className="w-4 h-4 text-white" />
-                </button>
-                {showTemplates && (
-                  <div className="absolute right-0 top-full mt-2 bg-white rounded-lg shadow-xl border border-slate-200 py-2 w-64 z-[9999]">
-                    <div className="px-3 py-2 border-b border-slate-200">
-                      <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Templates</p>
-                    </div>
-                    {templates.map((template) => (
-                      <button
-                        key={template.file}
-                        onClick={() => handleTemplateSelect(template.file)}
-                        className="w-full text-left px-3 py-2 hover:bg-slate-50 transition-colors"
-                      >
-                        <div className="font-medium text-slate-900 text-sm">{template.name}</div>
-                        <div className="text-xs text-slate-500">{template.description}</div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
               <button
                 onClick={handleDownload}
                 className="p-2 hover:bg-white/20 rounded-lg transition-all group backdrop-blur-sm"

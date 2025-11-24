@@ -2,7 +2,7 @@
 
 import type { ModelMessage } from 'ai';
 import { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Sparkles, CheckCircle2, Maximize2, X, ImagePlus } from 'lucide-react';
+import { Send, Bot, User, Sparkles, CheckCircle2, Maximize2, X, ImagePlus, FileText } from 'lucide-react';
 
 interface ImageAttachment {
   name: string;
@@ -26,10 +26,18 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [modalCode, setModalCode] = useState<{ code: string; lang: string } | null>(null);
   const [uploadedImages, setUploadedImages] = useState<ImageAttachment[]>([]);
+  const [showTemplates, setShowTemplates] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastProcessedIndex = useRef<number>(-1);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const templateDropdownRef = useRef<HTMLDivElement>(null);
+
+  const templates = [
+    { name: 'Blank', file: 'blank.html', description: 'Simple starter template' },
+    { name: 'Feature Launch', file: 'feature-launch.html', description: 'Suitable for newsletters too!' },
+    { name: 'Case Study', file: 'case-study.html', description: 'Creator partnership case study' },
+  ];
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -112,6 +120,40 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
     setUploadedImages(prev => prev.filter((_, i) => i !== index));
   };
 
+  // Handle template selection
+  const handleTemplateSelect = async (templateFile: string) => {
+    try {
+      const response = await fetch(`/api/templates/${templateFile}`);
+      if (response.ok) {
+        const content = await response.text();
+        onCodeUpdate(content);
+        setShowTemplates(false);
+      } else {
+        alert('Failed to load template');
+      }
+    } catch (error) {
+      console.error('Error loading template:', error);
+      alert('Failed to load template');
+    }
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (templateDropdownRef.current && !templateDropdownRef.current.contains(event.target as Node)) {
+        setShowTemplates(false);
+      }
+    };
+
+    if (showTemplates) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showTemplates]);
+
   // Extract HTML code from AI messages and update editor
   useEffect(() => {
     if (messages.length > 0 && lastProcessedIndex.current < messages.length - 1) {
@@ -190,11 +232,39 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
   return (
     <div className="flex flex-col h-full bg-linear-to-br from-slate-50 via-blue-50/30 to-purple-50/30">
       {/* Header */}
-      <div className="h-12 md:h-14 px-3 md:px-4 bg-linear-to-r from-violet-600 via-purple-600 to-fuchsia-600 border-b border-purple-500/20 flex items-center gap-2 shadow-lg backdrop-blur-sm">
-        <div className="p-1 md:p-1.5 bg-white/20 rounded-lg backdrop-blur-sm">
-          <Sparkles className="w-3 md:w-4 h-3 md:h-4 text-white" />
+      <div className="h-12 md:h-14 px-3 md:px-4 bg-linear-to-r from-violet-600 via-purple-600 to-fuchsia-600 border-b border-purple-500/20 flex items-center justify-between shadow-lg backdrop-blur-sm">
+        <div className="flex items-center gap-2">
+          <div className="p-1 md:p-1.5 bg-white/20 rounded-lg backdrop-blur-sm">
+            <Sparkles className="w-3 md:w-4 h-3 md:h-4 text-white" />
+          </div>
+          <span className="text-xs md:text-sm font-semibold text-white tracking-wide">AI Assistant</span>
         </div>
-        <span className="text-xs md:text-sm font-semibold text-white tracking-wide">AI Assistant</span>
+        <div className="relative" ref={templateDropdownRef}>
+          <button
+            onClick={() => setShowTemplates(!showTemplates)}
+            className="p-2 hover:bg-white/20 rounded-lg transition-all group backdrop-blur-sm"
+            title="Templates"
+          >
+            <FileText className="w-3 md:w-4 h-3 md:h-4 text-white" />
+          </button>
+          {showTemplates && (
+            <div className="absolute right-0 top-full mt-2 bg-white rounded-lg shadow-xl border border-slate-200 py-2 w-64 z-999999">
+              <div className="px-3 py-2 border-b border-slate-200">
+                <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Templates</p>
+              </div>
+              {templates.map((template) => (
+                <button
+                  key={template.file}
+                  onClick={() => handleTemplateSelect(template.file)}
+                  className="w-full text-left px-3 py-2 hover:bg-slate-50 transition-colors"
+                >
+                  <div className="font-medium text-slate-900 text-sm">{template.name}</div>
+                  <div className="text-xs text-slate-500">{template.description}</div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Messages Container */}

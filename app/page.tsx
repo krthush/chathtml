@@ -33,6 +33,7 @@ const STORAGE_KEY = 'chathtml-code';
 export default function Home() {
   const [code, setCode] = useState(INITIAL_CODE);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isLoadingShare, setIsLoadingShare] = useState(true);
   const [isEditorExpanded, setIsEditorExpanded] = useState(false);
 
   // Load code from localStorage or shared link on mount
@@ -44,11 +45,13 @@ export default function Home() {
 
       if (shareId) {
         // Load shared code
+        setIsLoadingShare(true);
         try {
           const response = await fetch(`/api/share/${shareId}`);
           if (response.ok) {
             const data = await response.json();
             setCode(data.code);
+            setIsLoadingShare(false);
             setIsLoaded(true);
             return;
           }
@@ -59,6 +62,7 @@ export default function Home() {
       }
 
       // Load from localStorage if no share ID or if loading failed
+      setIsLoadingShare(false);
       const savedCode = localStorage.getItem(STORAGE_KEY);
       if (savedCode) {
         setCode(savedCode);
@@ -71,10 +75,22 @@ export default function Home() {
 
   // Save code to localStorage whenever it changes
   useEffect(() => {
-    if (isLoaded) {
+    if (isLoaded && !isLoadingShare) {
       localStorage.setItem(STORAGE_KEY, code);
     }
-  }, [code, isLoaded]);
+  }, [code, isLoaded, isLoadingShare]);
+
+  // Show loading screen while fetching shared code
+  if (isLoadingShare) {
+    return (
+      <main className="flex h-screen w-full items-center justify-center bg-gradient-to-br from-blue-50 to-cyan-50">
+        <div className="text-center">
+          <div className="mb-4 inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
+          <p className="text-lg font-medium text-slate-700">Loading shared code...</p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="flex h-screen w-full overflow-hidden bg-white">

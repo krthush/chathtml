@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   title: "chathtml - AI-Powered HTML Editor",
   description: "An intuitive AI-powered HTML editor designed for non-technical users to build beautiful landing pages, newsletters, and email templates.",
   icons: {
-    icon: '/chathtml-icon.png',
+    icon: '/favicon.ico',
   },
 };
 

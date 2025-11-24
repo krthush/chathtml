@@ -695,7 +695,7 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
                   }
                 }}
                 placeholder="e.g., My Landing Page"
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-slate-900 placeholder:text-slate-400 bg-white"
                 autoFocus
               />
               <p className="text-xs text-slate-500 mt-2">

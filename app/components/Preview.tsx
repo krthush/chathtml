@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Eye, Smartphone, Monitor, X, Save } from 'lucide-react';
+import { Eye, Smartphone, Monitor, X, Save, Bold, Italic, Strikethrough, List, ListOrdered, Heading1, Heading2, Heading3, Heading4, Heading5, Image } from 'lucide-react';
 
 interface PreviewProps {
   code: string;
@@ -10,11 +10,20 @@ interface PreviewProps {
 
 type ViewMode = 'mobile' | 'desktop' | null;
 
+interface ContextMenuPosition {
+  x: number;
+  y: number;
+}
+
 export default function Preview({ code, onChange }: PreviewProps) {
   const [viewMode, setViewMode] = useState<ViewMode>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [pendingHtml, setPendingHtml] = useState<string | null>(null);
+  const [contextMenu, setContextMenu] = useState<ContextMenuPosition | null>(null);
+  const [showImagePrompt, setShowImagePrompt] = useState(false);
+  const [imageUrl, setImageUrl] = useState('');
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const contextMenuRef = useRef<HTMLDivElement>(null);
 
   // Setup iframe for editing (always editable)
   const setupEditableIframe = useCallback(() => {
@@ -41,11 +50,32 @@ export default function Preview({ code, onChange }: PreviewProps) {
         setHasUnsavedChanges(true);
       };
 
+      // Handle context menu
+      const handleContextMenu = (e: MouseEvent) => {
+        e.preventDefault();
+        
+        // Get the position relative to the viewport
+        const iframeRect = iframe.getBoundingClientRect();
+        setContextMenu({
+          x: iframeRect.left + e.clientX,
+          y: iframeRect.top + e.clientY
+        });
+      };
+
+      // Close context menu on left click
+      const handleClick = () => {
+        setContextMenu(null);
+      };
+
       body.addEventListener('input', handleInput);
+      body.addEventListener('contextmenu', handleContextMenu);
+      body.addEventListener('click', handleClick);
       
       // Cleanup
       return () => {
         body.removeEventListener('input', handleInput);
+        body.removeEventListener('contextmenu', handleContextMenu);
+        body.removeEventListener('click', handleClick);
       };
     }
   }, []);
@@ -93,6 +123,176 @@ export default function Preview({ code, onChange }: PreviewProps) {
     }
   };
 
+  // Close context menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (contextMenuRef.current && !contextMenuRef.current.contains(event.target as Node)) {
+        setContextMenu(null);
+      }
+    };
+
+    if (contextMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [contextMenu]);
+
+  // Check if selection is already wrapped in a specific tag
+  const isWrappedInTag = (tagName: string): Element | null => {
+    if (!iframeRef.current) return null;
+
+    const iframeDoc = iframeRef.current.contentDocument;
+    if (!iframeDoc) return null;
+
+    const selection = iframeDoc.getSelection();
+    if (!selection || selection.rangeCount === 0) return null;
+
+    let node: Node | null = selection.anchorNode;
+    
+    // Traverse up the DOM tree to find if we're inside the specified tag
+    while (node && node !== iframeDoc.body) {
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        const element = node as Element;
+        if (element.tagName.toLowerCase() === tagName.toLowerCase()) {
+          return element;
+        }
+      }
+      node = node.parentNode;
+    }
+    
+    return null;
+  };
+
+  // Format selected text or insert at cursor
+  const applyFormatting = (tagName: string, isBlock = false) => {
+    if (!iframeRef.current) return;
+
+    const iframeDoc = iframeRef.current.contentDocument;
+    if (!iframeDoc) return;
+
+    const selection = iframeDoc.getSelection();
+    if (!selection) return;
+
+    if (isBlock) {
+      // For block elements like headings and lists
+      if (selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        const selectedText = range.toString();
+        
+        // Check if already in a heading or list
+        const existingElement = isWrappedInTag(tagName);
+        
+        if (existingElement) {
+          // Remove the formatting by replacing with text content
+          const textNode = iframeDoc.createTextNode(existingElement.textContent || '');
+          existingElement.parentNode?.replaceChild(textNode, existingElement);
+        } else {
+          if (tagName === 'ul' || tagName === 'ol') {
+            // Create a bullet list or numbered list
+            const list = iframeDoc.createElement(tagName);
+            const li = iframeDoc.createElement('li');
+            li.textContent = selectedText || 'List item';
+            list.appendChild(li);
+            
+            range.deleteContents();
+            range.insertNode(list);
+          } else {
+            // For headings
+            const element = iframeDoc.createElement(tagName);
+            element.textContent = selectedText || 'Heading';
+            
+            range.deleteContents();
+            range.insertNode(element);
+          }
+        }
+        
+        // Trigger input event to mark as changed
+        iframeDoc.body.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    } else {
+      // For inline elements like bold, italic, strikethrough
+      const existingElement = isWrappedInTag(tagName);
+      
+      if (existingElement) {
+        // Toggle off: unwrap the element
+        const parent = existingElement.parentNode;
+        if (parent) {
+          // Replace the element with its text content
+          const textNode = iframeDoc.createTextNode(existingElement.textContent || '');
+          parent.replaceChild(textNode, existingElement);
+          
+          // Trigger input event
+          iframeDoc.body.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+      } else {
+        // Toggle on: wrap with the element
+        if (selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0);
+          const selectedText = range.toString();
+          
+          const element = iframeDoc.createElement(tagName);
+          element.textContent = selectedText || 'Text';
+          
+          range.deleteContents();
+          range.insertNode(element);
+          
+          // Trigger input event
+          iframeDoc.body.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+      }
+    }
+
+    setContextMenu(null);
+  };
+
+  // Insert image with URL
+  const insertImage = () => {
+    setContextMenu(null);
+    setShowImagePrompt(true);
+  };
+
+  const handleImageInsert = () => {
+    if (!imageUrl.trim()) return;
+    
+    if (!iframeRef.current) return;
+    const iframeDoc = iframeRef.current.contentDocument;
+    if (!iframeDoc) return;
+
+    const selection = iframeDoc.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+
+    const range = selection.getRangeAt(0);
+    const img = iframeDoc.createElement('img');
+    img.src = imageUrl;
+    img.alt = 'Inserted image';
+    img.style.maxWidth = '100%';
+    img.style.height = 'auto';
+    
+    range.deleteContents();
+    range.insertNode(img);
+    
+    // Trigger input event
+    iframeDoc.body.dispatchEvent(new Event('input', { bubbles: true }));
+    
+    setShowImagePrompt(false);
+    setImageUrl('');
+  };
+
+  // Context menu items
+  const formatOptions = [
+    { icon: Bold, label: 'Bold', action: () => applyFormatting('strong') },
+    { icon: Italic, label: 'Italic', action: () => applyFormatting('em') },
+    { icon: Strikethrough, label: 'Strikethrough', action: () => applyFormatting('s') },
+    { icon: List, label: 'Bullet List', action: () => applyFormatting('ul', true) },
+    { icon: ListOrdered, label: 'Numbered List', action: () => applyFormatting('ol', true) },
+    { icon: Heading1, label: 'Heading 1', action: () => applyFormatting('h1', true) },
+    { icon: Heading2, label: 'Heading 2', action: () => applyFormatting('h2', true) },
+    { icon: Heading3, label: 'Heading 3', action: () => applyFormatting('h3', true) },
+    { icon: Heading4, label: 'Heading 4', action: () => applyFormatting('h4', true) },
+    { icon: Heading5, label: 'Heading 5', action: () => applyFormatting('h5', true) },
+    { icon: Image, label: 'Insert Image', action: insertImage },
+  ];
+
   return (
     <div className="h-full flex flex-col bg-white">
       <div className="h-14 px-4 bg-linear-to-r from-orange-500 via-rose-500 to-pink-600 border-b border-orange-500/20 flex items-center justify-between shadow-lg backdrop-blur-sm">
@@ -102,7 +302,7 @@ export default function Preview({ code, onChange }: PreviewProps) {
           </div>
           <span className="text-sm font-semibold text-white tracking-wide">Live Preview</span>
           <span className="text-xs bg-white/20 text-white px-2 py-0.5 rounded-full backdrop-blur-sm">
-            Editable
+            Editable - Try Right Clicking!
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -149,6 +349,76 @@ export default function Preview({ code, onChange }: PreviewProps) {
           sandbox="allow-scripts allow-same-origin" // allow-same-origin needed for contenteditable
         />
       </div>
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <div
+          ref={contextMenuRef}
+          className="fixed bg-white rounded-lg shadow-2xl border border-slate-200 py-1 z-50 min-w-[180px]"
+          style={{ 
+            left: `${contextMenu.x}px`, 
+            top: `${contextMenu.y}px`,
+          }}
+        >
+          {formatOptions.map((option, index) => (
+            <button
+              key={index}
+              onClick={option.action}
+              className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 flex items-center gap-3 transition-colors"
+            >
+              <option.icon className="w-4 h-4 text-slate-500" />
+              <span>{option.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Image URL Prompt */}
+      {showImagePrompt && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => { setShowImagePrompt(false); setImageUrl(''); }}>
+          <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-slate-900">Insert Image</h3>
+              <button
+                onClick={() => { setShowImagePrompt(false); setImageUrl(''); }}
+                className="p-1 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
+            <p className="text-sm text-slate-600 mb-4">
+              Enter the URL of the image you want to insert:
+            </p>
+            <input
+              type="text"
+              value={imageUrl}
+              onChange={(e) => setImageUrl(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleImageInsert();
+                }
+              }}
+              placeholder="https://example.com/image.jpg"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg mb-4 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-rose-500"
+              autoFocus
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => { setShowImagePrompt(false); setImageUrl(''); }}
+                className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleImageInsert}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition-colors text-sm font-medium"
+              >
+                Insert
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Mobile Preview Modal */}
       {viewMode === 'mobile' && (

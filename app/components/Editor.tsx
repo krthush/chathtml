@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import Editor, { OnMount } from '@monaco-editor/react';
-import { Code2, Upload, Download, ChevronLeft, FileText } from 'lucide-react';
+import { Code2, Upload, Download, ChevronLeft, FileText, Share2, X, Check } from 'lucide-react';
 
 interface CodeEditorProps {
   code: string;
@@ -13,6 +13,10 @@ export default function CodeEditor({ code, onChange, isExpanded, onToggleExpand 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showTemplates, setShowTemplates] = useState(false);
   const templateDropdownRef = useRef<HTMLDivElement>(null);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
+  const [isSharing, setIsSharing] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const templates = [
     { name: 'Blank', file: 'blank.html', description: 'Simple starter template' },
@@ -77,6 +81,48 @@ export default function CodeEditor({ code, onChange, isExpanded, onToggleExpand 
     }
   };
 
+  const handleShare = async () => {
+    setIsSharing(true);
+    try {
+      const response = await fetch('/api/share', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ code }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setShareUrl(data.shareUrl);
+        setShowShareModal(true);
+      } else {
+        alert('Failed to create share link');
+      }
+    } catch (error) {
+      console.error('Error sharing code:', error);
+      alert('Failed to create share link');
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  const handleCopyUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error('Failed to copy:', error);
+      alert('Failed to copy to clipboard');
+    }
+  };
+
+  const handleCloseModal = () => {
+    setShowShareModal(false);
+    setCopied(false);
+  };
+
   // Close dropdown when clicking outside
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -115,9 +161,58 @@ export default function CodeEditor({ code, onChange, isExpanded, onToggleExpand 
       });
   };
 
+  // Share Modal (rendered for both views)
+  const shareModal = showShareModal && (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={handleCloseModal}>
+      <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-slate-900">Share Your Code</h3>
+          <button
+            onClick={handleCloseModal}
+            className="p-1 hover:bg-slate-100 rounded-lg transition-colors"
+          >
+            <X className="w-5 h-5 text-slate-500" />
+          </button>
+        </div>
+        <p className="text-sm text-slate-600 mb-4">
+          Anyone with this link can view and edit this HTML code:
+        </p>
+        <div className="flex items-center gap-2 mb-4">
+          <input
+            type="text"
+            value={shareUrl}
+            readOnly
+            className="flex-1 px-3 py-2 border border-slate-300 rounded-lg bg-slate-50 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <button
+            onClick={handleCopyUrl}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center gap-2 text-sm font-medium"
+          >
+            {copied ? (
+              <>
+                <Check className="w-4 h-4" />
+                Copied!
+              </>
+            ) : (
+              <>
+                <Share2 className="w-4 h-4" />
+                Copy
+              </>
+            )}
+          </button>
+        </div>
+        <p className="text-xs text-slate-500">
+          This link will remain active and accessible to anyone who has it.
+        </p>
+      </div>
+    </div>
+  );
+
   // Collapsed view
   if (!isExpanded) {
     return (
+      <>
+        {shareModal}
       <div className="h-full flex flex-col border-r border-slate-200/50 bg-gradient-to-b from-blue-600 via-cyan-600 to-teal-600">
         <div className="flex flex-col items-center gap-4 pt-3 pb-6">
           <button
@@ -168,6 +263,15 @@ export default function CodeEditor({ code, onChange, isExpanded, onToggleExpand 
           >
             <Download className="w-5 h-5 text-white" />
           </button>
+          <div className="w-px h-8 bg-white/20"></div>
+          <button
+            onClick={handleShare}
+            disabled={isSharing}
+            className="p-2 hover:bg-white/20 rounded-lg transition-all backdrop-blur-sm disabled:opacity-50"
+            title="Share Code"
+          >
+            <Share2 className="w-5 h-5 text-white" />
+          </button>
         </div>
         <input
           ref={fileInputRef}
@@ -177,17 +281,24 @@ export default function CodeEditor({ code, onChange, isExpanded, onToggleExpand 
           className="hidden"
         />
       </div>
+      </>
     );
   }
 
   // Expanded view
   return (
+    <>
+      {shareModal}
     <div className="h-full flex flex-col border-r border-slate-200/50">
         <div className="h-14 px-4 bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-600 border-b border-blue-500/20 flex items-center justify-between shadow-lg backdrop-blur-sm">
             <div className="flex items-center gap-2">
-              <div className="p-1.5 bg-white/20 rounded-lg backdrop-blur-sm">
+              <button
+                onClick={onToggleExpand}
+                className="p-1.5 bg-white/20 hover:bg-white/30 rounded-lg backdrop-blur-sm transition-all cursor-pointer"
+                title="Close Editor"
+              >
                 <Code2 className="w-4 h-4 text-white" />
-              </div>
+              </button>
               <span className="text-sm font-semibold text-white tracking-wide">HTML Editor</span>
             </div>
             <div className="flex items-center gap-1">
@@ -232,6 +343,14 @@ export default function CodeEditor({ code, onChange, isExpanded, onToggleExpand 
                 <Download className="w-4 h-4 text-white" />
               </button>
               <button
+                onClick={handleShare}
+                disabled={isSharing}
+                className="p-2 hover:bg-white/20 rounded-lg transition-all group backdrop-blur-sm disabled:opacity-50"
+                title="Share Code"
+              >
+                <Share2 className="w-4 h-4 text-white" />
+              </button>
+              <button
                 onClick={onToggleExpand}
                 className="p-2 hover:bg-white/20 rounded-lg transition-all group backdrop-blur-sm"
                 title="Close Editor"
@@ -262,6 +381,7 @@ export default function CodeEditor({ code, onChange, isExpanded, onToggleExpand 
             />
         </div>
     </div>
+    </>
   );
 }
 

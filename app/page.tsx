@@ -35,13 +35,38 @@ export default function Home() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isEditorExpanded, setIsEditorExpanded] = useState(false);
 
-  // Load code from localStorage on mount
+  // Load code from localStorage or shared link on mount
   useEffect(() => {
-    const savedCode = localStorage.getItem(STORAGE_KEY);
-    if (savedCode) {
-      setCode(savedCode);
-    }
-    setIsLoaded(true);
+    const loadCode = async () => {
+      // Check if there's a share ID in the URL
+      const params = new URLSearchParams(window.location.search);
+      const shareId = params.get('share');
+
+      if (shareId) {
+        // Load shared code
+        try {
+          const response = await fetch(`/api/share/${shareId}`);
+          if (response.ok) {
+            const data = await response.json();
+            setCode(data.code);
+            setIsLoaded(true);
+            return;
+          }
+        } catch (error) {
+          console.error('Error loading shared code:', error);
+          // Fall through to load from localStorage
+        }
+      }
+
+      // Load from localStorage if no share ID or if loading failed
+      const savedCode = localStorage.getItem(STORAGE_KEY);
+      if (savedCode) {
+        setCode(savedCode);
+      }
+      setIsLoaded(true);
+    };
+
+    loadCode();
   }, []);
 
   // Save code to localStorage whenever it changes

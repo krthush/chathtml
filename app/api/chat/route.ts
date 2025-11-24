@@ -1,5 +1,5 @@
 import { anthropic } from '@ai-sdk/anthropic';
-import { generateText, type ModelMessage } from 'ai';
+import { generateText } from 'ai';
 
 interface ImageAttachment {
   name: string;
@@ -15,22 +15,45 @@ interface ExtendedMessage {
 export async function POST(req: Request) {
   const { messages, currentCode }: { messages: ExtendedMessage[]; currentCode: string } = await req.json();
 
-  // Process messages to include image information
+  // Process messages to include images with vision support
   const processedMessages = messages.map((msg) => {
     if (msg.images && msg.images.length > 0) {
-      // Format image information for the AI with publicly accessible URLs
-      const imageInfo = msg.images
-        .map((img, idx) => `Image ${idx + 1} (${img.name}): ${img.url}`)
+      // Format message with vision content parts
+      const contentParts: any[] = [];
+      
+      // Add text content with image URLs
+      const imageUrlsText = msg.images
+        .map((img, idx) => `Image ${idx + 1}: ${img.url}`)
         .join('\n');
       
-      const contentWithImages = `${msg.content}\n\n[IMAGES ATTACHED]:\n${imageInfo}`;
+      const textContent = msg.content && msg.content.trim()
+        ? `${msg.content}\n\n[Uploaded Images - Use these URLs in your HTML]:\n${imageUrlsText}`
+        : `[Uploaded Images - Use these URLs in your HTML]:\n${imageUrlsText}`;
+      
+      contentParts.push({
+        type: 'text',
+        text: textContent
+      });
+      
+      // Add each image as an image part for vision
+      msg.images.forEach((img) => {
+        contentParts.push({
+          type: 'image',
+          image: img.url
+        });
+      });
       
       return {
-        ...msg,
-        content: contentWithImages,
+        role: msg.role,
+        content: contentParts
       };
     }
-    return msg;
+    
+    // For messages without images, keep as simple string content
+    return {
+      role: msg.role,
+      content: msg.content
+    };
   });
 
   const systemPrompt = `You are an expert web developer assistant helping users build HTML pages.
@@ -50,17 +73,20 @@ ${currentCode}
 7. If modifying existing code, make sure to preserve any parts the user wants to keep
 
 When the user provides images:
-- Images are provided as publicly accessible URLs (e.g., https://...)
-- You can use these URLs directly in the src attribute of <img> tags
-- Example: <img src="https://example.com/image.jpg" alt="description">
-- These are permanent URLs that can be used directly in the HTML
+- You can see and analyze the images directly using vision
+- The images are uploaded to permanent, publicly accessible URLs (Vercel Blob storage)
+- The exact image URLs will be provided in the format: "Image X: https://..."
+- IMPORTANT: When creating or modifying HTML, you MUST use these exact URLs in your <img> tags
+- Example: If provided "Image 1: https://abc123.public.blob.vercel-storage.com/image.jpg", use <img src="https://abc123.public.blob.vercel-storage.com/image.jpg" alt="description">
+- Analyze image content to provide relevant descriptions, styling suggestions, or HTML structure
+- Always incorporate uploaded images into the HTML output using their provided URLs
 
 When modifying existing code, carefully read the current code and make only the requested changes while preserving the overall structure unless asked to rebuild from scratch.`;
 
   const { response } = await generateText({
     model: anthropic('claude-sonnet-4-5-20250929'),
     system: systemPrompt,
-    messages: processedMessages as ModelMessage[],
+    messages: processedMessages as any[],
   });
 
   // Convert response messages to ExtendedMessage format

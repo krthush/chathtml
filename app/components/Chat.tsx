@@ -29,6 +29,7 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastProcessedIndex = useRef<number>(-1);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -37,6 +38,23 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Auto-resize textarea
+  useEffect(() => {
+    if (textareaRef.current) {
+      const maxHeight = 128; // max-h-32 in pixels
+      textareaRef.current.style.height = 'auto';
+      const scrollHeight = textareaRef.current.scrollHeight;
+      
+      if (scrollHeight > maxHeight) {
+        textareaRef.current.style.height = maxHeight + 'px';
+        textareaRef.current.style.overflowY = 'auto';
+      } else {
+        textareaRef.current.style.height = scrollHeight + 'px';
+        textareaRef.current.style.overflowY = 'hidden';
+      }
+    }
+  }, [input]);
 
   // Upload image to Vercel Blob and get URL
   const uploadImageToService = async (file: File): Promise<ImageAttachment> => {
@@ -128,6 +146,12 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
     setInput('');
     setUploadedImages([]);
     setIsLoading(true);
+    
+    // Reset textarea height
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.overflowY = 'hidden';
+    }
 
     // Create user message with images
     const userMessage: ExtendedMessage = {
@@ -188,6 +212,10 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
             </h3>
             <p className="text-slate-600 text-xs md:text-sm max-w-sm leading-relaxed">
               Ask me to create or modify HTML pages, and I'll help you build beautiful web content.
+            </p>
+            <p className="text-slate-500 text-[10px] md:text-xs max-w-sm leading-relaxed mt-2 flex items-center gap-1 justify-center">
+              <ImagePlus className="w-3 h-3" />
+              <span>I can analyze images you upload!</span>
             </p>
           </div>
         )}
@@ -275,25 +303,31 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
         <div className="max-w-3xl mx-auto">
           {/* Image Preview Area */}
           {uploadedImages.length > 0 && (
-            <div className="mb-2 md:mb-3 flex flex-wrap gap-1.5 md:gap-2">
-              {uploadedImages.map((image, index) => (
-                  <div key={index} className="relative group">
-                    <img
-                      src={image.url}
-                      alt={image.name}
-                      className="w-16 md:w-20 h-16 md:h-20 object-cover rounded-lg border-2 border-slate-200"
-                    />
-                  <button
-                    onClick={() => removeImage(index)}
-                    className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                  <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[9px] px-1 py-0.5 rounded-b-lg truncate">
-                    {image.name}
+            <div className="mb-2 md:mb-3">
+              <div className="flex flex-wrap gap-1.5 md:gap-2 mb-2">
+                {uploadedImages.map((image, index) => (
+                    <div key={index} className="relative group">
+                      <img
+                        src={image.url}
+                        alt={image.name}
+                        className="w-16 md:w-20 h-16 md:h-20 object-cover rounded-lg border-2 border-slate-200"
+                      />
+                    <button
+                      onClick={() => removeImage(index)}
+                      className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[9px] px-1 py-0.5 rounded-b-lg truncate">
+                      {image.name}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
+              <div className="text-[10px] md:text-xs text-purple-600 flex items-center gap-1">
+                <Sparkles className="w-3 h-3" />
+                <span>AI will analyze {uploadedImages.length === 1 ? 'this image' : 'these images'}</span>
+              </div>
             </div>
           )}
           
@@ -314,7 +348,8 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
             >
               <ImagePlus className="w-3.5 md:w-4 h-3.5 md:h-4 text-slate-600" />
             </button>
-            <input
+            <textarea
+              ref={textareaRef}
               value={input}
               onChange={event => setInput(event.target.value)}
               onKeyDown={event => {
@@ -325,7 +360,8 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
               }}
               placeholder="Ask me anything..."
               disabled={isLoading}
-              className="flex-1 bg-transparent border-none outline-none text-slate-800 placeholder-slate-400 text-sm md:text-[15px] disabled:opacity-50"
+              rows={1}
+              className="flex-1 bg-transparent border-none outline-none text-slate-800 placeholder-slate-400 text-sm md:text-[15px] disabled:opacity-50 resize-none max-h-32"
             />
             <button
               onClick={handleSend}

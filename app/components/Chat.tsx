@@ -2,7 +2,7 @@
 
 import type { ModelMessage } from 'ai';
 import { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Sparkles, CheckCircle2, Maximize2, X, ImagePlus, FileText } from 'lucide-react';
+import { Send, Bot, User, Sparkles, CheckCircle2, Maximize2, X, ImagePlus, FileText, Save, Plus } from 'lucide-react';
 
 interface ImageAttachment {
   name: string;
@@ -13,6 +13,12 @@ interface ExtendedMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
   images?: ImageAttachment[];
+}
+
+interface CustomTemplate {
+  name: string;
+  url: string;
+  uploadedAt: string;
 }
 
 interface ChatProps {
@@ -27,20 +33,33 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
   const [modalCode, setModalCode] = useState<{ code: string; lang: string } | null>(null);
   const [uploadedImages, setUploadedImages] = useState<ImageAttachment[]>([]);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [customTemplates, setCustomTemplates] = useState<CustomTemplate[]>([]);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [templateName, setTemplateName] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastProcessedIndex = useRef<number>(-1);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const templateDropdownRef = useRef<HTMLDivElement>(null);
 
-  const templates = [
-    { name: 'Blank', file: 'blank.html', description: 'Simple starter template' },
-    { name: 'Feature Launch', file: 'feature-launch.html', description: 'Suitable for newsletters too!' },
-    { name: 'Case Study', file: 'case-study.html', description: 'Creator partnership case study' },
+  const defaultTemplates = [
+    { name: 'Blank', file: 'blank.html', description: 'Simple starter template', isDefault: true },
+    { name: 'Feature Launch', file: 'feature-launch.html', description: 'Suitable for newsletters too!', isDefault: true },
+    { name: 'Case Study', file: 'case-study.html', description: 'Creator partnership case study', isDefault: true },
   ];
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // Format template name for display (capitalize and remove dashes)
+  const formatTemplateName = (name: string) => {
+    return name
+      .replace(/-/g, ' ')
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
   };
 
   useEffect(() => {
@@ -120,7 +139,24 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
     setUploadedImages(prev => prev.filter((_, i) => i !== index));
   };
 
-  // Handle template selection
+  // Fetch custom templates on mount
+  useEffect(() => {
+    fetchCustomTemplates();
+  }, []);
+
+  const fetchCustomTemplates = async () => {
+    try {
+      const response = await fetch('/api/templates/custom');
+      if (response.ok) {
+        const data = await response.json();
+        setCustomTemplates(data.templates);
+      }
+    } catch (error) {
+      console.error('Error fetching custom templates:', error);
+    }
+  };
+
+  // Handle template selection (default templates)
   const handleTemplateSelect = async (templateFile: string) => {
     try {
       const response = await fetch(`/api/templates/${templateFile}`);
@@ -134,6 +170,82 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
     } catch (error) {
       console.error('Error loading template:', error);
       alert('Failed to load template');
+    }
+  };
+
+  // Handle custom template selection
+  const handleCustomTemplateSelect = async (templateUrl: string) => {
+    try {
+      const response = await fetch(templateUrl);
+      if (response.ok) {
+        const content = await response.text();
+        onCodeUpdate(content);
+        setShowTemplates(false);
+      } else {
+        alert('Failed to load template');
+      }
+    } catch (error) {
+      console.error('Error loading custom template:', error);
+      alert('Failed to load template');
+    }
+  };
+
+  // Save current code as template
+  const handleSaveTemplate = async () => {
+    if (!templateName.trim()) {
+      alert('Please enter a template name');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const response = await fetch('/api/templates/custom', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: templateName,
+          content: currentCode,
+        }),
+      });
+
+      if (response.ok) {
+        await fetchCustomTemplates();
+        setShowSaveModal(false);
+        setTemplateName('');
+        alert('Template saved successfully!');
+      } else {
+        const data = await response.json();
+        alert(data.error || 'Failed to save template');
+      }
+    } catch (error) {
+      console.error('Error saving template:', error);
+      alert('Failed to save template');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Delete custom template
+  const handleDeleteTemplate = async (templateUrl: string, templateName: string) => {
+    if (!confirm(`Are you sure you want to delete "${templateName}"?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/templates/custom?url=${encodeURIComponent(templateUrl)}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        await fetchCustomTemplates();
+      } else {
+        alert('Failed to delete template');
+      }
+    } catch (error) {
+      console.error('Error deleting template:', error);
+      alert('Failed to delete template');
     }
   };
 
@@ -242,17 +354,30 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
         <div className="relative" ref={templateDropdownRef}>
           <button
             onClick={() => setShowTemplates(!showTemplates)}
-            className="p-2 hover:bg-white/20 rounded-lg transition-all group backdrop-blur-sm"
+            className="p-1.5 bg-white/20 hover:bg-white/30 rounded-lg transition-all group backdrop-blur-sm"
             title="Templates"
           >
             <FileText className="w-3 md:w-4 h-3 md:h-4 text-white" />
           </button>
           {showTemplates && (
-            <div className="absolute right-0 top-full mt-2 bg-white rounded-lg shadow-xl border border-slate-200 py-2 w-64 z-999999">
-              <div className="px-3 py-2 border-b border-slate-200">
+            <div className="absolute right-0 top-full mt-2 bg-white rounded-lg shadow-xl border border-slate-200 py-2 w-72 z-999999 max-h-96 overflow-y-auto">
+              <div className="px-3 py-2 border-b border-slate-200 flex items-center justify-between">
                 <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Templates</p>
+                <button
+                  onClick={() => setShowSaveModal(true)}
+                  className="flex items-center gap-1 text-xs bg-purple-600 hover:bg-purple-700 text-white px-2 py-1 rounded transition-colors"
+                  title="Save current code as template"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>Save</span>
+                </button>
               </div>
-              {templates.map((template) => (
+              
+              {/* Default Templates */}
+              <div className="px-3 py-1.5 bg-slate-50 border-b border-slate-200">
+                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Default</p>
+              </div>
+              {defaultTemplates.map((template) => (
                 <button
                   key={template.file}
                   onClick={() => handleTemplateSelect(template.file)}
@@ -262,6 +387,41 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
                   <div className="text-xs text-slate-500">{template.description}</div>
                 </button>
               ))}
+
+              {/* Custom Templates */}
+              {customTemplates.length > 0 && (
+                <>
+                  <div className="px-3 py-1.5 bg-slate-50 border-b border-slate-200 mt-1">
+                    <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Custom</p>
+                  </div>
+                  {customTemplates.map((template) => (
+                    <div
+                      key={template.url}
+                      className="group relative flex items-center hover:bg-slate-50 transition-colors"
+                    >
+                      <button
+                        onClick={() => handleCustomTemplateSelect(template.url)}
+                        className="flex-1 text-left px-3 py-2"
+                      >
+                        <div className="font-medium text-slate-900 text-sm pr-8">{formatTemplateName(template.name)}</div>
+                        <div className="text-xs text-slate-500">
+                          {new Date(template.uploadedAt).toLocaleDateString()}
+                        </div>
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteTemplate(template.url, formatTemplateName(template.name));
+                        }}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 opacity-0 group-hover:opacity-100 hover:bg-red-100 rounded transition-all"
+                        title="Delete template"
+                      >
+                        <X className="w-3.5 h-3.5 text-red-600" />
+                      </button>
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
           )}
         </div>
@@ -488,6 +648,87 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
                 className="px-4 py-2 text-sm font-medium text-white bg-linear-to-r from-violet-600 to-fuchsia-600 rounded-xl hover:from-violet-700 hover:to-fuchsia-700 transition-all shadow-lg shadow-purple-500/30"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Save Template Modal */}
+      {showSaveModal && (
+        <div 
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => {
+            setShowSaveModal(false);
+            setTemplateName('');
+          }}
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full border border-slate-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b border-slate-200 bg-linear-to-r from-purple-50 to-white">
+              <h3 className="text-lg font-semibold bg-linear-to-r from-violet-600 to-fuchsia-600 bg-clip-text text-transparent">
+                Save as Template
+              </h3>
+              <button
+                onClick={() => {
+                  setShowSaveModal(false);
+                  setTemplateName('');
+                }}
+                className="p-1 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
+            <div className="p-4">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Template Name
+              </label>
+              <input
+                type="text"
+                value={templateName}
+                onChange={(e) => setTemplateName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !isSaving) {
+                    handleSaveTemplate();
+                  }
+                }}
+                placeholder="e.g., My Landing Page"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                autoFocus
+              />
+              <p className="text-xs text-slate-500 mt-2">
+                Your current HTML code will be saved as a reusable template.
+              </p>
+            </div>
+            <div className="flex justify-end gap-2 p-4 border-t border-slate-200 bg-slate-50">
+              <button
+                onClick={() => {
+                  setShowSaveModal(false);
+                  setTemplateName('');
+                }}
+                disabled={isSaving}
+                className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveTemplate}
+                disabled={isSaving || !templateName.trim()}
+                className="px-4 py-2 text-sm font-medium text-white bg-linear-to-r from-violet-600 to-fuchsia-600 rounded-lg hover:from-violet-700 hover:to-fuchsia-700 transition-all shadow-lg shadow-purple-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isSaving ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    Save Template
+                  </>
+                )}
               </button>
             </div>
           </div>

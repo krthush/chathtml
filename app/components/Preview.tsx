@@ -126,14 +126,14 @@ export default function Preview({ code, onChange }: PreviewProps) {
           )}
           <button
             onClick={() => setViewMode('mobile')}
-            className="p-2 hover:bg-white/20 rounded-lg transition-all group backdrop-blur-sm"
+            className="p-1.5 bg-white/20 hover:bg-white/30 rounded-lg transition-all group backdrop-blur-sm"
             title="Mobile Preview"
           >
             <Smartphone className="w-4 h-4 text-white" />
           </button>
           <button
             onClick={() => setViewMode('desktop')}
-            className="hidden md:flex p-2 hover:bg-white/20 rounded-lg transition-all group backdrop-blur-sm"
+            className="hidden md:flex p-1.5 bg-white/20 hover:bg-white/30 rounded-lg transition-all group backdrop-blur-sm"
             title="Desktop Preview"
           >
             <Monitor className="w-4 h-4 text-white" />

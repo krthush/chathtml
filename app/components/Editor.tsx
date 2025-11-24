@@ -180,7 +180,7 @@ export default function CodeEditor({ code, onChange, isExpanded, onToggleExpand 
             className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-all backdrop-blur-sm"
             title="Open HTML Editor"
           >
-            <Code2 className="w-5 h-5 text-white" />
+            <Code2 className="w-4 h-4 text-white" />
           </button>
           <div className="h-px w-4 md:h-8 md:w-px bg-white/20"></div>
           <button
@@ -188,14 +188,14 @@ export default function CodeEditor({ code, onChange, isExpanded, onToggleExpand 
             className="p-2 hover:bg-white/20 rounded-lg transition-all backdrop-blur-sm"
             title="Upload HTML"
           >
-            <Upload className="w-5 h-5 text-white" />
+            <Upload className="w-4 h-4 text-white" />
           </button>
           <button
             onClick={handleDownload}
             className="p-2 hover:bg-white/20 rounded-lg transition-all backdrop-blur-sm"
             title="Download HTML"
           >
-            <Download className="w-5 h-5 text-white" />
+            <Download className="w-4 h-4 text-white" />
           </button>
           <div className="h-px w-4 md:h-8 md:w-px bg-white/20"></div>
           <button
@@ -204,7 +204,7 @@ export default function CodeEditor({ code, onChange, isExpanded, onToggleExpand 
             className="p-2 hover:bg-white/20 rounded-lg transition-all backdrop-blur-sm disabled:opacity-50"
             title="Share Code"
           >
-            <Share2 className="w-5 h-5 text-white" />
+            <Share2 className="w-4 h-4 text-white" />
           </button>
           <div className="h-px w-4 md:h-8 md:w-px bg-white/20"></div>
           <button
@@ -212,7 +212,7 @@ export default function CodeEditor({ code, onChange, isExpanded, onToggleExpand 
             className="p-2 hover:bg-white/20 rounded-lg transition-all backdrop-blur-sm"
             title="Expand Editor"
           >
-            <ChevronRight className="w-5 h-5 text-white" />
+            <ChevronRight className="w-4 h-4 text-white" />
           </button>
         </div>
         <input

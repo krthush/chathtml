@@ -12,9 +12,11 @@ interface CodeEditorProps {
 export default function CodeEditor({ code, onChange, isExpanded, onToggleExpand }: CodeEditorProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showShareOptionModal, setShowShareOptionModal] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
   const [isSharing, setIsSharing] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [existingShareId, setExistingShareId] = useState<string | null>(null);
 
   const handleEditorChange = (value: string | undefined) => {
     onChange(value);
@@ -58,6 +60,21 @@ export default function CodeEditor({ code, onChange, isExpanded, onToggleExpand 
   };
 
   const handleShare = async () => {
+    // Check if there's already a share ID in the URL
+    const params = new URLSearchParams(window.location.search);
+    const shareId = params.get('share');
+
+    if (shareId) {
+      // Show option modal if share link already exists
+      setExistingShareId(shareId);
+      setShowShareOptionModal(true);
+    } else {
+      // Create new link directly if no share param exists
+      await createNewShareLink();
+    }
+  };
+
+  const createNewShareLink = async () => {
     setIsSharing(true);
     try {
       const response = await fetch('/api/share', {
@@ -72,12 +89,43 @@ export default function CodeEditor({ code, onChange, isExpanded, onToggleExpand 
         const data = await response.json();
         setShareUrl(data.shareUrl);
         setShowShareModal(true);
+        // Update URL without reloading the page
+        window.history.pushState({}, '', `?share=${data.id}`);
       } else {
         alert('Failed to create share link');
       }
     } catch (error) {
       console.error('Error sharing code:', error);
       alert('Failed to create share link');
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  const updateExistingShareLink = async () => {
+    if (!existingShareId) return;
+    
+    setIsSharing(true);
+    setShowShareOptionModal(false);
+    try {
+      const response = await fetch(`/api/share/${existingShareId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ code }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setShareUrl(data.shareUrl);
+        setShowShareModal(true);
+      } else {
+        alert('Failed to update share link');
+      }
+    } catch (error) {
+      console.error('Error updating shared code:', error);
+      alert('Failed to update share link');
     } finally {
       setIsSharing(false);
     }
@@ -97,6 +145,11 @@ export default function CodeEditor({ code, onChange, isExpanded, onToggleExpand 
   const handleCloseModal = () => {
     setShowShareModal(false);
     setCopied(false);
+  };
+
+  const handleCloseOptionModal = () => {
+    setShowShareOptionModal(false);
+    setExistingShareId(null);
   };
 
   const handleEditorDidMount: OnMount = (editor, monaco) => {
@@ -119,6 +172,50 @@ export default function CodeEditor({ code, onChange, isExpanded, onToggleExpand 
         fontFamily: "'Consolas', 'Monaco', 'Courier New', monospace",
       });
   };
+
+  // Share Option Modal (choose between save or create new)
+  const shareOptionModal = showShareOptionModal && (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={handleCloseOptionModal}>
+      <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-slate-900">Share Options</h3>
+          <button
+            onClick={handleCloseOptionModal}
+            className="p-1 hover:bg-slate-100 rounded-lg transition-colors"
+          >
+            <X className="w-5 h-5 text-slate-500" />
+          </button>
+        </div>
+        <p className="text-sm text-slate-600 mb-6">
+          This page already has a share link. What would you like to do?
+        </p>
+        <div className="space-y-3">
+          <button
+            onClick={updateExistingShareLink}
+            disabled={isSharing}
+            className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center justify-center gap-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Share2 className="w-4 h-4" />
+            Save to Existing Link
+          </button>
+          <button
+            onClick={async () => {
+              setShowShareOptionModal(false);
+              await createNewShareLink();
+            }}
+            disabled={isSharing}
+            className="w-full px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Share2 className="w-4 h-4" />
+            Create New Link
+          </button>
+        </div>
+        <p className="text-xs text-slate-500 mt-4">
+          Saving to existing link will update the current share link with your latest changes.
+        </p>
+      </div>
+    </div>
+  );
 
   // Share Modal (rendered for both views)
   const shareModal = showShareModal && (
@@ -171,6 +268,7 @@ export default function CodeEditor({ code, onChange, isExpanded, onToggleExpand 
   if (!isExpanded) {
     return (
       <>
+        {shareOptionModal}
         {shareModal}
       {/* Mobile: Horizontal Bar / Desktop: Vertical Bar */}
       <div className="h-full w-full flex md:flex-col border-b md:border-b-0 md:border-r border-slate-200/50 bg-linear-to-r md:bg-linear-to-b from-blue-600 via-cyan-600 to-teal-600">
@@ -230,6 +328,7 @@ export default function CodeEditor({ code, onChange, isExpanded, onToggleExpand 
   // Expanded view
   return (
     <>
+      {shareOptionModal}
       {shareModal}
     <div className="h-full flex flex-col border-r border-slate-200/50">
         <div className="h-14 px-4 bg-linear-to-r from-blue-600 via-cyan-600 to-teal-600 border-b border-blue-500/20 flex items-center justify-between shadow-lg backdrop-blur-sm">

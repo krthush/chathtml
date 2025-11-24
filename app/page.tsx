@@ -83,7 +83,7 @@ export default function Home() {
   // Show loading screen while fetching shared code
   if (isLoadingShare) {
     return (
-      <main className="flex h-screen w-full items-center justify-center bg-gradient-to-br from-blue-50 to-cyan-50">
+      <main className="flex h-screen w-full items-center justify-center bg-linear-to-br from-blue-50 to-cyan-50">
         <div className="text-center">
           <div className="mb-4 inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
           <p className="text-lg font-medium text-slate-700">Loading shared code...</p>
@@ -93,14 +93,21 @@ export default function Home() {
   }
 
   return (
-    <main className="flex h-screen w-full overflow-hidden bg-white">
-      {/* Left Panel: Chat */}
-      <div className="w-1/4 min-w-[300px] max-w-[400px] h-full">
+    <main className="flex flex-col md:flex-row h-screen w-full overflow-hidden bg-white">
+      {/* Mobile: Top Panel / Desktop: Left Panel - Chat */}
+      <div className="h-[30vh] md:h-full w-full md:w-1/4 md:min-w-[300px] md:max-w-[400px]">
         <Chat onCodeUpdate={setCode} currentCode={code} />
       </div>
 
-      {/* Middle Panel: Editor */}
-      <div className={`h-full transition-all duration-300 ${isEditorExpanded ? 'w-1/3 min-w-[300px]' : 'w-[60px]'}`}>
+      {/* Mobile: Horizontal Bar / Desktop: Middle Panel - Editor */}
+      <div className={`
+        w-full md:w-auto md:h-full 
+        transition-all duration-300
+        ${isEditorExpanded 
+          ? 'h-[40vh] md:w-1/3 md:min-w-[300px] md:h-full' 
+          : 'h-[50px] md:h-full md:w-[60px]'
+        }
+      `}>
         <CodeEditor 
           code={code} 
           onChange={(newCode) => setCode(newCode || '')}
@@ -109,8 +116,8 @@ export default function Home() {
         />
       </div>
 
-      {/* Right Panel: Preview */}
-      <div className="flex-1 h-full">
+      {/* Mobile: Bottom Panel / Desktop: Right Panel - Preview */}
+      <div className="flex-1 h-full w-full md:flex-1">
         <Preview code={code} onChange={setCode} />
       </div>
     </main>

@@ -213,8 +213,9 @@ export default function CodeEditor({ code, onChange, isExpanded, onToggleExpand 
     return (
       <>
         {shareModal}
-      <div className="h-full flex flex-col border-r border-slate-200/50 bg-gradient-to-b from-blue-600 via-cyan-600 to-teal-600">
-        <div className="flex flex-col items-center gap-4 pt-3 pb-6">
+      {/* Mobile: Horizontal Bar / Desktop: Vertical Bar */}
+      <div className="h-full w-full flex md:flex-col border-b md:border-b-0 md:border-r border-slate-200/50 bg-linear-to-r md:bg-linear-to-b from-blue-600 via-cyan-600 to-teal-600">
+        <div className="flex md:flex-col items-center gap-2 md:gap-4 px-3 py-2 md:px-0 md:pt-3 md:pb-6 w-full md:w-auto justify-center">
           <button
             onClick={onToggleExpand}
             className="p-2 bg-white/10 hover:bg-white/20 rounded-lg transition-all backdrop-blur-sm"
@@ -222,7 +223,7 @@ export default function CodeEditor({ code, onChange, isExpanded, onToggleExpand 
           >
             <Code2 className="w-5 h-5 text-white" />
           </button>
-          <div className="w-px h-8 bg-white/20"></div>
+          <div className="h-px w-4 md:h-8 md:w-px bg-white/20"></div>
           <button
             onClick={handleUploadClick}
             className="p-2 hover:bg-white/20 rounded-lg transition-all backdrop-blur-sm"
@@ -239,7 +240,7 @@ export default function CodeEditor({ code, onChange, isExpanded, onToggleExpand 
               <FileText className="w-5 h-5 text-white" />
             </button>
             {showTemplates && (
-              <div className="absolute left-full ml-2 top-0 bg-white rounded-lg shadow-xl border border-slate-200 py-2 w-64 z-50">
+              <div className="absolute top-full mt-2 md:left-full md:top-0 md:ml-2 md:mt-0 left-1/2 -translate-x-1/2 md:translate-x-0 bg-white rounded-lg shadow-xl border border-slate-200 py-2 w-64 z-50">
                 <div className="px-3 py-2 border-b border-slate-200">
                   <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Templates</p>
                 </div>
@@ -263,7 +264,7 @@ export default function CodeEditor({ code, onChange, isExpanded, onToggleExpand 
           >
             <Download className="w-5 h-5 text-white" />
           </button>
-          <div className="w-px h-8 bg-white/20"></div>
+          <div className="h-px w-4 md:h-8 md:w-px bg-white/20"></div>
           <button
             onClick={handleShare}
             disabled={isSharing}
@@ -290,7 +291,7 @@ export default function CodeEditor({ code, onChange, isExpanded, onToggleExpand 
     <>
       {shareModal}
     <div className="h-full flex flex-col border-r border-slate-200/50">
-        <div className="h-14 px-4 bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-600 border-b border-blue-500/20 flex items-center justify-between shadow-lg backdrop-blur-sm">
+        <div className="h-14 px-4 bg-linear-to-r from-blue-600 via-cyan-600 to-teal-600 border-b border-blue-500/20 flex items-center justify-between shadow-lg backdrop-blur-sm">
             <div className="flex items-center gap-2">
               <button
                 onClick={onToggleExpand}

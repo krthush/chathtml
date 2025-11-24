@@ -101,11 +101,10 @@ export default function Home() {
 
       {/* Mobile: Horizontal Bar / Desktop: Middle Panel - Editor */}
       <div className={`
-        w-full md:w-auto md:h-full 
         transition-all duration-300
         ${isEditorExpanded 
-          ? 'h-[40vh] md:w-1/3 md:min-w-[300px] md:h-full' 
-          : 'h-[50px] md:h-full md:w-[60px]'
+          ? 'h-[40vh] w-full md:h-full md:w-1/3 md:min-w-[300px]' 
+          : 'h-[50px] w-full md:h-full md:w-[60px]'
         }
       `}>
         <CodeEditor 

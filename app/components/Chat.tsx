@@ -1,8 +1,8 @@
 'use client';
 
 import type { ModelMessage } from 'ai';
-import { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Sparkles, CheckCircle2, Maximize2, X, ImagePlus, FileText, Save, Plus, Brain } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { Send, Bot, User, Sparkles, CheckCircle2, Maximize2, X, ImagePlus, FileText, Save, Plus, Brain, Undo2 } from 'lucide-react';
 
 interface ImageAttachment {
   name: string;
@@ -26,6 +26,12 @@ interface ChatProps {
   currentCode: string;
 }
 
+interface CodeHistory {
+  messageIndex: number;
+  codeSnapshot: string;
+  timestamp: number;
+}
+
 export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<ExtendedMessage[]>([]);
@@ -39,12 +45,19 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [selectedModel, setSelectedModel] = useState<'claude' | 'gpt'>('gpt');
   const [showModelDropdown, setShowModelDropdown] = useState(false);
+  const [messagesWithCode, setMessagesWithCode] = useState<Set<number>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastProcessedIndex = useRef<number>(-1);
+  const currentCodeRef = useRef<string>(currentCode);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const templateDropdownRef = useRef<HTMLDivElement>(null);
   const modelDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Keep ref in sync with currentCode
+  useEffect(() => {
+    currentCodeRef.current = currentCode;
+  }, [currentCode]);
 
   const defaultTemplates = [
     { name: 'Blank', file: 'blank.html', description: 'Simple starter template', isDefault: true },
@@ -55,6 +68,39 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
+
+  // Local storage helpers for code history
+  const saveCodeSnapshot = useCallback((messageIndex: number, code: string) => {
+    const history: CodeHistory = {
+      messageIndex,
+      codeSnapshot: code,
+      timestamp: Date.now()
+    };
+    localStorage.setItem(`code-history-${messageIndex}`, JSON.stringify(history));
+    setMessagesWithCode(prev => new Set(prev).add(messageIndex));
+  }, []);
+
+  const getCodeSnapshot = useCallback((messageIndex: number): string | null => {
+    const stored = localStorage.getItem(`code-history-${messageIndex}`);
+    if (stored) {
+      const history: CodeHistory = JSON.parse(stored);
+      return history.codeSnapshot;
+    }
+    return null;
+  }, []);
+
+  const clearCodeSnapshot = useCallback((messageIndex: number) => {
+    localStorage.removeItem(`code-history-${messageIndex}`);
+    setMessagesWithCode(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(messageIndex);
+      return newSet;
+    });
+  }, []);
+
+  const hasCodeSnapshot = useCallback((messageIndex: number): boolean => {
+    return messagesWithCode.has(messageIndex);
+  }, [messagesWithCode]);
 
   // Format template name for display (capitalize and remove dashes)
   const formatTemplateName = (name: string) => {
@@ -146,6 +192,31 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
   useEffect(() => {
     fetchCustomTemplates();
   }, []);
+
+  // Load code history from localStorage on mount
+  useEffect(() => {
+    const indices = new Set<number>();
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('code-history-')) {
+        const index = parseInt(key.replace('code-history-', ''));
+        if (!isNaN(index)) {
+          indices.add(index);
+        }
+      }
+    }
+    setMessagesWithCode(indices);
+  }, []);
+
+  // Clean up localStorage entries for messages that no longer exist
+  useEffect(() => {
+    const currentMessageCount = messages.length;
+    messagesWithCode.forEach(index => {
+      if (index >= currentMessageCount) {
+        clearCodeSnapshot(index);
+      }
+    });
+  }, [messages.length, messagesWithCode, clearCodeSnapshot]);
 
   const fetchCustomTemplates = async () => {
     try {
@@ -290,13 +361,37 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
           const htmlCode = lastMatch[1].trim();
           
           if (htmlCode) {
+            const messageIndex = messages.length - 1;
+            // Save snapshot before applying new code (use ref to avoid dependency)
+            saveCodeSnapshot(messageIndex, currentCodeRef.current);
             onCodeUpdate(htmlCode);
-            lastProcessedIndex.current = messages.length - 1;
+            lastProcessedIndex.current = messageIndex;
           }
         }
       }
     }
-  }, [messages, onCodeUpdate]);
+  }, [messages, onCodeUpdate, saveCodeSnapshot]);
+
+  // Handle undo for a specific message
+  const handleUndo = useCallback((messageIndex: number) => {
+    const snapshot = getCodeSnapshot(messageIndex);
+    if (snapshot) {
+      onCodeUpdate(snapshot);
+      
+      // Clear this snapshot and all subsequent ones
+      for (let i = messageIndex; i < messages.length; i++) {
+        clearCodeSnapshot(i);
+      }
+      
+      // Remove the user's message, assistant message, and all subsequent messages
+      // messageIndex is the assistant message, so messageIndex - 1 is the user's prompt
+      const removeFromIndex = messageIndex > 0 ? messageIndex - 1 : messageIndex;
+      setMessages(prevMessages => prevMessages.slice(0, removeFromIndex));
+      
+      // Reset lastProcessedIndex to reprocess if needed
+      lastProcessedIndex.current = removeFromIndex - 1;
+    }
+  }, [getCodeSnapshot, clearCodeSnapshot, onCodeUpdate, messages.length]);
 
   const handleSend = async () => {
     if ((!input.trim() && uploadedImages.length === 0) || isLoading) return;
@@ -520,58 +615,75 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
           {messages.map((message, index) => (
             <div
               key={`${message.role}-${index}`}
-              className={`flex gap-2 md:gap-3 ${
-                message.role === 'user' ? 'justify-end' : 'justify-start'
-              }`}
             >
-              {message.role === 'assistant' && (
-                <div className="w-6 md:w-8 h-6 md:h-8 rounded-xl bg-linear-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center shrink-0 shadow-lg shadow-purple-500/30">
-                  <Bot className="w-3 md:w-4.5 h-3 md:h-4.5 text-white" />
-                </div>
-              )}
-              
               <div
-                className={`rounded-xl md:rounded-2xl px-3 md:px-4 py-2 md:py-3 max-w-[80%] shadow-md ${
-                  message.role === 'user'
-                    ? 'bg-linear-to-br from-violet-600 to-fuchsia-600 text-white shadow-purple-500/30'
-                    : 'bg-white text-slate-800 border border-slate-200/50'
+                className={`flex gap-2 md:gap-3 ${
+                  message.role === 'user' ? 'justify-end' : 'justify-start'
                 }`}
               >
-                {/* Display images if present */}
-                {message.images && message.images.length > 0 && (
-                  <div className="mb-1.5 md:mb-2 flex flex-wrap gap-1.5 md:gap-2">
-                    {message.images.map((image, imgIndex) => (
-                      <div key={imgIndex} className="relative">
-                        <img
-                          src={image.url}
-                          alt={image.name}
-                          className="max-w-[120px] md:max-w-[200px] max-h-[120px] md:max-h-[200px] object-cover rounded-lg border-2 border-white/20"
-                        />
-                        <div className={`text-[9px] px-2 py-0.5 mt-1 rounded ${
-                          message.role === 'user' 
-                            ? 'bg-white/20 text-white' 
-                            : 'bg-slate-100 text-slate-600'
-                        }`}>
-                          {image.name}
-                        </div>
-                      </div>
-                    ))}
+                {message.role === 'assistant' && (
+                  <div className="w-6 md:w-8 h-6 md:h-8 rounded-xl bg-linear-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center shrink-0 shadow-lg shadow-purple-500/30">
+                    <Bot className="w-3 md:w-4.5 h-3 md:h-4.5 text-white" />
                   </div>
                 )}
                 
-                {/* Display text content */}
-                <MessageContent 
-                  content={message.content} 
-                  role={message.role}
-                  onCodeClick={setModalCode}
-                />
-              </div>
-
-              {message.role === 'user' && (
-                <div className="w-6 md:w-8 h-6 md:h-8 rounded-xl bg-linear-to-br from-blue-500 to-cyan-500 flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/30">
-                  <User className="w-3 md:w-4.5 h-3 md:h-4.5 text-white" />
+                <div className="flex flex-col gap-1.5 md:gap-2 max-w-[80%]">
+                  <div
+                    className={`rounded-xl md:rounded-2xl px-3 md:px-4 py-2 md:py-3 shadow-md ${
+                      message.role === 'user'
+                        ? 'bg-linear-to-br from-violet-600 to-fuchsia-600 text-white shadow-purple-500/30'
+                        : 'bg-white text-slate-800 border border-slate-200/50'
+                    }`}
+                  >
+                    {/* Display images if present */}
+                    {message.images && message.images.length > 0 && (
+                      <div className="mb-1.5 md:mb-2 flex flex-wrap gap-1.5 md:gap-2">
+                        {message.images.map((image, imgIndex) => (
+                          <div key={imgIndex} className="relative">
+                            <img
+                              src={image.url}
+                              alt={image.name}
+                              className="max-w-[120px] md:max-w-[200px] max-h-[120px] md:max-h-[200px] object-cover rounded-lg border-2 border-white/20"
+                            />
+                            <div className={`text-[9px] px-2 py-0.5 mt-1 rounded ${
+                              message.role === 'user' 
+                                ? 'bg-white/20 text-white' 
+                                : 'bg-slate-100 text-slate-600'
+                            }`}>
+                              {image.name}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {/* Display text content */}
+                    <MessageContent 
+                      content={message.content} 
+                      role={message.role}
+                      onCodeClick={setModalCode}
+                    />
+                  </div>
+                  
+                  {/* Undo button for assistant messages that applied code */}
+                  {message.role === 'assistant' && hasCodeSnapshot(index) && (
+                    <button
+                      onClick={() => handleUndo(index)}
+                      className="self-start flex items-center gap-1.5 px-2.5 md:px-3 py-1.5 md:py-2 text-[10px] md:text-xs font-medium text-slate-600 hover:text-violet-600 bg-white hover:bg-violet-50 border border-slate-200 hover:border-violet-300 rounded-lg md:rounded-xl transition-all shadow-sm hover:shadow"
+                      title="Undo changes from this message"
+                    >
+                      <Undo2 className="w-3 md:w-3.5 h-3 md:h-3.5" />
+                      <span>Undo changes</span>
+                    </button>
+                  )}
                 </div>
-              )}
+
+                {message.role === 'user' && (
+                  <div className="w-6 md:w-8 h-6 md:h-8 rounded-xl bg-linear-to-br from-blue-500 to-cyan-500 flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/30">
+                    <User className="w-3 md:w-4.5 h-3 md:h-4.5 text-white" />
+                  </div>
+                )}
+              </div>
             </div>
           ))}
 

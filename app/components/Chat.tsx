@@ -446,7 +446,7 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
   return (
     <div className="flex flex-col h-full bg-linear-to-br from-slate-50 via-blue-50/30 to-purple-50/30">
       {/* Header */}
-      <div className="h-12 md:h-14 px-3 md:px-4 bg-linear-to-r from-violet-600 via-purple-600 to-fuchsia-600 border-b border-purple-500/20 flex items-center justify-between shadow-lg backdrop-blur-sm">
+      <div className="h-12 md:h-14 px-3 md:px-4 bg-linear-to-r from-violet-600 via-purple-600 to-fuchsia-600 border-b border-purple-500/20 flex items-center justify-between shadow-lg backdrop-blur-sm relative z-50">
         <div className="flex items-center gap-2">
           <div className="p-1 md:p-1.5 bg-white/20 rounded-lg backdrop-blur-sm">
             <Sparkles className="w-3 md:w-4 h-3 md:h-4 text-white" />
@@ -467,7 +467,7 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
               </span>
             </button>
             {showModelDropdown && (
-              <div className="absolute right-0 top-full mt-2 bg-white rounded-lg shadow-xl border border-slate-200 py-1 w-56 z-999999">
+              <div className="absolute right-0 top-full mt-2 bg-white rounded-lg shadow-xl border border-slate-200 py-1 w-56 z-50">
                 <button
                   onClick={() => {
                     setSelectedModel('claude');
@@ -520,7 +520,7 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
               <FileText className="w-3 md:w-4 h-3 md:h-4 text-white" />
             </button>
             {showTemplates && (
-            <div className="absolute right-0 top-full mt-2 bg-white rounded-lg shadow-xl border border-slate-200 py-2 w-72 z-999999 max-h-96 overflow-y-auto">
+            <div className="absolute right-0 top-full mt-2 bg-white rounded-lg shadow-xl border border-slate-200 py-2 w-72 z-50 max-h-96 overflow-y-auto">
               <div className="px-3 py-2 border-b border-slate-200 flex items-center justify-between">
                 <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Templates</p>
                 <button
@@ -589,7 +589,7 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
       </div>
 
       {/* Messages Container */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto relative z-0">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center p-4 md:p-8">
             <div className="relative">

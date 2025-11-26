@@ -2,7 +2,7 @@
 
 import type { ModelMessage } from 'ai';
 import { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Sparkles, CheckCircle2, Maximize2, X, ImagePlus, FileText, Save, Plus } from 'lucide-react';
+import { Send, Bot, User, Sparkles, CheckCircle2, Maximize2, X, ImagePlus, FileText, Save, Plus, Brain } from 'lucide-react';
 
 interface ImageAttachment {
   name: string;
@@ -37,11 +37,14 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [templateName, setTemplateName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<'claude' | 'gpt'>('gpt');
+  const [showModelDropdown, setShowModelDropdown] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastProcessedIndex = useRef<number>(-1);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const templateDropdownRef = useRef<HTMLDivElement>(null);
+  const modelDropdownRef = useRef<HTMLDivElement>(null);
 
   const defaultTemplates = [
     { name: 'Blank', file: 'blank.html', description: 'Simple starter template', isDefault: true },
@@ -255,16 +258,19 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
       if (templateDropdownRef.current && !templateDropdownRef.current.contains(event.target as Node)) {
         setShowTemplates(false);
       }
+      if (modelDropdownRef.current && !modelDropdownRef.current.contains(event.target as Node)) {
+        setShowModelDropdown(false);
+      }
     };
 
-    if (showTemplates) {
+    if (showTemplates || showModelDropdown) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showTemplates]);
+  }, [showTemplates, showModelDropdown]);
 
   // Extract HTML code from AI messages and update editor
   useEffect(() => {
@@ -325,6 +331,7 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
         body: JSON.stringify({
           messages: [...messages, userMessage],
           currentCode: currentCode,
+          model: selectedModel,
         }),
       });
 
@@ -351,15 +358,73 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
           </div>
           <span className="text-xs md:text-sm font-semibold text-white tracking-wide">AI Assistant</span>
         </div>
-        <div className="relative" ref={templateDropdownRef}>
-          <button
-            onClick={() => setShowTemplates(!showTemplates)}
-            className="p-1.5 bg-white/20 hover:bg-white/30 rounded-lg transition-all group backdrop-blur-sm"
-            title="Templates"
-          >
-            <FileText className="w-3 md:w-4 h-3 md:h-4 text-white" />
-          </button>
-          {showTemplates && (
+        <div className="flex items-center gap-2">
+          {/* Model Switcher */}
+          <div className="relative" ref={modelDropdownRef}>
+            <button
+              onClick={() => setShowModelDropdown(!showModelDropdown)}
+              className="p-1.5 bg-white/20 hover:bg-white/30 rounded-lg transition-all group backdrop-blur-sm flex items-center gap-1.5"
+              title="Switch Model"
+            >
+              <Brain className="w-3 md:w-4 h-3 md:h-4 text-white" />
+              <span className="hidden md:inline text-xs text-white/90">
+                {selectedModel === 'claude' ? 'Claude' : 'GPT'}
+              </span>
+            </button>
+            {showModelDropdown && (
+              <div className="absolute right-0 top-full mt-2 bg-white rounded-lg shadow-xl border border-slate-200 py-1 w-56 z-999999">
+                <button
+                  onClick={() => {
+                    setSelectedModel('claude');
+                    setShowModelDropdown(false);
+                  }}
+                  className={`w-full text-left px-3 py-2.5 hover:bg-slate-50 transition-colors ${
+                    selectedModel === 'claude' ? 'bg-purple-50' : ''
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${
+                      selectedModel === 'claude' ? 'bg-purple-600' : 'bg-transparent border border-slate-300'
+                    }`}></div>
+                    <div className="flex-1">
+                      <div className="font-medium text-slate-900 text-sm">Claude Sonnet 4.5</div>
+                      <div className="text-xs text-slate-500">Anthropic</div>
+                    </div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedModel('gpt');
+                    setShowModelDropdown(false);
+                  }}
+                  className={`w-full text-left px-3 py-2.5 hover:bg-slate-50 transition-colors ${
+                    selectedModel === 'gpt' ? 'bg-purple-50' : ''
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${
+                      selectedModel === 'gpt' ? 'bg-purple-600' : 'bg-transparent border border-slate-300'
+                    }`}></div>
+                    <div className="flex-1">
+                      <div className="font-medium text-slate-900 text-sm">GPT-5 Mini</div>
+                      <div className="text-xs text-slate-500">OpenAI</div>
+                    </div>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
+          
+          {/* Templates Button */}
+          <div className="relative" ref={templateDropdownRef}>
+            <button
+              onClick={() => setShowTemplates(!showTemplates)}
+              className="p-1.5 bg-white/20 hover:bg-white/30 rounded-lg transition-all group backdrop-blur-sm"
+              title="Templates"
+            >
+              <FileText className="w-3 md:w-4 h-3 md:h-4 text-white" />
+            </button>
+            {showTemplates && (
             <div className="absolute right-0 top-full mt-2 bg-white rounded-lg shadow-xl border border-slate-200 py-2 w-72 z-999999 max-h-96 overflow-y-auto">
               <div className="px-3 py-2 border-b border-slate-200 flex items-center justify-between">
                 <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Templates</p>
@@ -424,6 +489,7 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
               )}
             </div>
           )}
+          </div>
         </div>
       </div>
 

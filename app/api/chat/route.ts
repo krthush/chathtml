@@ -1,4 +1,5 @@
 import { openai } from '@ai-sdk/openai';
+import { anthropic } from '@ai-sdk/anthropic';
 import { generateText } from 'ai';
 
 interface ImageAttachment {
@@ -13,7 +14,7 @@ interface ExtendedMessage {
 }
 
 export async function POST(req: Request) {
-  const { messages, currentCode }: { messages: ExtendedMessage[]; currentCode: string } = await req.json();
+  const { messages, currentCode, model }: { messages: ExtendedMessage[]; currentCode: string; model?: string } = await req.json();
 
   // Process messages to include images with vision support
   const processedMessages = messages.map((msg) => {
@@ -83,8 +84,13 @@ When the user provides images:
 
 When modifying existing code, carefully read the current code and make only the requested changes while preserving the overall structure unless asked to rebuild from scratch.`;
 
+  // Select the appropriate model
+  const selectedModel = model === 'claude' 
+    ? anthropic('claude-sonnet-4-5-20250929')
+    : openai('gpt-5-mini');
+
   const { response } = await generateText({
-    model: openai('gpt-5-mini'),
+    model: selectedModel,
     system: systemPrompt,
     messages: processedMessages as any[],
   });

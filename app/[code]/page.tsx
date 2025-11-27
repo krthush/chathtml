@@ -4,16 +4,32 @@ import { headers } from 'next/headers';
 export default async function Page({ 
   params 
 }: { 
-  params: { code: string } | Promise<{ code: string }> 
+  params: Promise<{ code: string }> 
 }) {
-  // This works with both Next.js 14 and 15
-  const { code } = params instanceof Promise ? await params : params;
+  
+  // ... your existing code (if any) ...
+  
+  // Await params in Next.js 15+
+  const { code } = await params;
+  
+  // Get user's actual headers to pass through
+  const headersList = await headers();
+  const userAgent = headersList.get('user-agent') || '';
+  const referrer = headersList.get('referer') || '';
+  const ip = headersList.get('x-forwarded-for')?.split(',')[0]?.trim() || 
+             headersList.get('x-real-ip') || '';
   
   // Check if it's an affiliate code
   const res = await fetch('https://faved.com/api/affiliate-links/resolve', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ slug: 'prada', code }),
+    body: JSON.stringify({ 
+      slug: 'prada', 
+      code,
+      ip,
+      userAgent,
+      referrer
+    }),
     cache: 'no-store'
   });
   
@@ -21,8 +37,6 @@ export default async function Page({
   
   if (data.success && data.url) {
     // Check if it's a bot (for social previews)
-    const headersList = await Promise.resolve(headers());
-    const userAgent = headersList.get('user-agent') || '';
     const isBot = /bot|crawler|spider|facebookexternalhit|twitterbot/i.test(userAgent);
     
     if (isBot) {

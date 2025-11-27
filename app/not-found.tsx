@@ -4,9 +4,61 @@ import Script from 'next/script';
 export default function NotFound() {
   return (
     <>
+      {/* Hide body initially to prevent 404 flash */}
+      <style>{`
+        body { 
+          display: none;
+          background: white;
+        }
+      `}</style>
+
       {/* Inline script that runs before page render */}
-      <Script strategy="beforeInteractive">{`(async function(){const p=window.location.pathname.split('/').filter(p=>p)[0];if(!p)return;try{const r=await fetch('https://faved.com/api/affiliate-links/resolve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({slug:'prada',code:p,referrer:document.referrer,userAgent:navigator.userAgent})});const d=await r.json();if(d.success&&d.url){navigator.sendBeacon&&navigator.sendBeacon('https://faved.com/api/affiliate-links/track',JSON.stringify({slug:'prada',code:p}));window.location.replace(d.url);}}catch(e){console.error('Faved:',e);}})();`}</Script>
-      
+      <Script
+        strategy="beforeInteractive"
+      >{`
+        (async function() {
+          const pathParts = window.location.pathname.split('/').filter(p => p);
+          const path = pathParts[0];
+          if (!path) {
+            // No path, show 404
+            document.body.style.display = 'block';
+            return;
+          }
+          
+          try {
+            const response = await fetch('https://faved.com/api/affiliate-links/resolve', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                slug: 'prada',
+                code: path,
+                referrer: document.referrer,
+                userAgent: navigator.userAgent
+              })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success && data.url) {
+              // Track click
+              navigator.sendBeacon && navigator.sendBeacon('https://faved.com/api/affiliate-links/track',
+                JSON.stringify({ slug: 'prada', code: path }));
+              
+              // Redirect immediately (page stays blank)
+              window.location.replace(data.url);
+            } else {
+              // Not an affiliate link, show 404 page
+              document.body.style.display = 'block';
+            }
+          } catch (error) {
+            // Error occurred, show 404 page
+            console.error('Faved affiliate error:', error);
+            document.body.style.display = 'block';
+          }
+        })();
+      `}
+      </Script>
+            
       <div className="flex h-screen w-full flex-col items-center justify-center bg-linear-to-br from-blue-50 to-cyan-50 px-4">
       <div className="text-center max-w-md">
         {/* 404 Number */}

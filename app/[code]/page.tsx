@@ -19,7 +19,7 @@ export default async function Page({ params }: { params: { code: string } }) {
   
   if (data.success && data.url) {
     // Check if it's a bot (for social previews)
-    const userAgent = headers().get('user-agent') || '';
+    const userAgent = (await headers()).get('user-agent') || '';
     const isBot = /bot|crawler|spider|facebookexternalhit|twitterbot/i.test(userAgent);
     
     if (isBot) {

@@ -322,6 +322,37 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
     }
   };
 
+  // Update existing custom template with current code
+  const handleUpdateTemplate = async (templateName: string, displayName: string) => {
+    if (!confirm(`Are you sure you want to overwrite "${displayName}" with your current code?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/templates/custom', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: templateName,
+          content: currentCode,
+        }),
+      });
+
+      if (response.ok) {
+        await fetchCustomTemplates();
+        alert('Template updated successfully!');
+      } else {
+        const data = await response.json();
+        alert(data.error || 'Failed to update template');
+      }
+    } catch (error) {
+      console.error('Error updating template:', error);
+      alert('Failed to update template');
+    }
+  };
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -562,21 +593,33 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
                         onClick={() => handleCustomTemplateSelect(template.url)}
                         className="flex-1 text-left px-3 py-2"
                       >
-                        <div className="font-medium text-slate-900 text-sm pr-8">{formatTemplateName(template.name)}</div>
+                        <div className="font-medium text-slate-900 text-sm pr-14">{formatTemplateName(template.name)}</div>
                         <div className="text-xs text-slate-500">
                           {new Date(template.uploadedAt).toLocaleDateString()}
                         </div>
                       </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteTemplate(template.url, formatTemplateName(template.name));
-                        }}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 opacity-0 group-hover:opacity-100 hover:bg-red-100 rounded transition-all"
-                        title="Delete template"
-                      >
-                        <X className="w-3.5 h-3.5 text-red-600" />
-                      </button>
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleUpdateTemplate(template.name, formatTemplateName(template.name));
+                          }}
+                          className="p-1 hover:bg-purple-100 rounded transition-all"
+                          title="Save current code to this template"
+                        >
+                          <Save className="w-3.5 h-3.5 text-purple-600" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteTemplate(template.url, formatTemplateName(template.name));
+                          }}
+                          className="p-1 hover:bg-red-100 rounded transition-all"
+                          title="Delete template"
+                        >
+                          <X className="w-3.5 h-3.5 text-red-600" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </>

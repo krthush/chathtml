@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Eye, Smartphone, Monitor, X, Save, Bold, Italic, Strikethrough, List, ListOrdered, Heading1, Heading2, Heading3, Heading4, Heading5, Image } from 'lucide-react';
+import { Eye, Smartphone, Monitor, X, Save, Bold, Italic, Strikethrough, List, ListOrdered, Heading1, Heading2, Heading3, Heading4, Heading5, Image, Share2 } from 'lucide-react';
 
 interface PreviewProps {
   code: string;
@@ -22,6 +22,9 @@ export default function Preview({ code, onChange }: PreviewProps) {
   const [contextMenu, setContextMenu] = useState<ContextMenuPosition | null>(null);
   const [showImagePrompt, setShowImagePrompt] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
+  const [showShareUpdateModal, setShowShareUpdateModal] = useState(false);
+  const [isUpdatingShare, setIsUpdatingShare] = useState(false);
+  const [existingShareId, setExistingShareId] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
 
@@ -107,10 +110,67 @@ export default function Preview({ code, onChange }: PreviewProps) {
   // Save changes
   const handleSave = () => {
     if (pendingHtml && onChange) {
+      // Check if there's a share ID in the URL
+      const params = new URLSearchParams(window.location.search);
+      const shareId = params.get('share');
+
+      if (shareId) {
+        // Show confirmation modal to update share link
+        setExistingShareId(shareId);
+        setShowShareUpdateModal(true);
+      } else {
+        // Just save locally
+        saveLocally();
+      }
+    }
+  };
+
+  // Save locally only
+  const saveLocally = () => {
+    if (pendingHtml && onChange) {
       onChange(pendingHtml);
       setHasUnsavedChanges(false);
       setPendingHtml(null);
     }
+  };
+
+  // Update share link and save locally
+  const updateShareAndSave = async () => {
+    if (!existingShareId || !pendingHtml) return;
+
+    setIsUpdatingShare(true);
+    try {
+      const response = await fetch(`/api/share/${existingShareId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ code: pendingHtml }),
+      });
+
+      if (response.ok) {
+        // Save locally after successful share update
+        saveLocally();
+      } else {
+        alert('Failed to update share link. Changes saved locally only.');
+        saveLocally();
+      }
+    } catch (error) {
+      console.error('Error updating shared code:', error);
+      alert('Failed to update share link. Changes saved locally only.');
+      saveLocally();
+    } finally {
+      setIsUpdatingShare(false);
+      setShowShareUpdateModal(false);
+      setExistingShareId(null);
+    }
+  };
+
+  // Handle save without updating share
+  const handleSaveLocalOnly = () => {
+    setShowShareUpdateModal(false);
+    setExistingShareId(null);
+    saveLocally();
   };
 
   // Discard changes and reload
@@ -416,6 +476,47 @@ export default function Preview({ code, onChange }: PreviewProps) {
                 Insert
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Share Update Confirmation Modal */}
+      {showShareUpdateModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={handleSaveLocalOnly}>
+          <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-slate-900">Update Share Link?</h3>
+              <button
+                onClick={handleSaveLocalOnly}
+                className="p-1 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
+            <p className="text-sm text-slate-600 mb-6">
+              This page has an existing share link. Would you like to update it with your changes?
+            </p>
+            <div className="space-y-3">
+              <button
+                onClick={updateShareAndSave}
+                disabled={isUpdatingShare}
+                className="w-full px-4 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition-colors flex items-center justify-center gap-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Share2 className="w-4 h-4" />
+                {isUpdatingShare ? 'Updating...' : 'Yes, Update Share Link'}
+              </button>
+              <button
+                onClick={handleSaveLocalOnly}
+                disabled={isUpdatingShare}
+                className="w-full px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Save className="w-4 h-4" />
+                No, Save Locally Only
+              </button>
+            </div>
+            <p className="text-xs text-slate-500 mt-4">
+              Updating the share link will make your changes visible to anyone with the link.
+            </p>
           </div>
         </div>
       )}

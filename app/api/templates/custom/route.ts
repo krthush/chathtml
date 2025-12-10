@@ -58,6 +58,7 @@ export async function POST(request: Request) {
     const uploadedBlob = await put(`templates/${sanitizedName}.html`, file, {
       access: 'public',
       addRandomSuffix: false, // Don't add random suffix for template names
+      allowOverwrite: true,
     });
 
     return NextResponse.json({

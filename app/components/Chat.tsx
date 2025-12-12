@@ -62,6 +62,7 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
   const defaultTemplates = [
     { name: 'Blank', file: 'blank.html', description: 'Simple starter template', isDefault: true },
     { name: 'Feature Launch', file: 'feature-launch.html', description: 'Suitable for newsletters too!', isDefault: true },
+    { name: 'Blog', file: 'blog.html', description: 'Suitable for blogs', isDefault: true },
   ];
 
   const scrollToBottom = () => {

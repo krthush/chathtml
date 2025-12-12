@@ -43,7 +43,7 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [templateName, setTemplateName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<'claude' | 'gpt'>('gpt');
+  const [selectedModel, setSelectedModel] = useState<'claude' | 'gpt'>('claude');
   const [showModelDropdown, setShowModelDropdown] = useState(false);
   const [messagesWithCode, setMessagesWithCode] = useState<Set<number>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);

@@ -1,6 +1,16 @@
 import { openai } from '@ai-sdk/openai';
-import { anthropic } from '@ai-sdk/anthropic';
 import { generateText } from 'ai';
+import Anthropic from '@anthropic-ai/sdk';
+
+// Initialize the Anthropic client for Azure-hosted Claude
+const AZURE_RESOURCE_NAME = process.env.AZURE_RESOURCE_NAME || "faved-resource";
+
+const anthropicClient = new Anthropic({
+  apiKey: process.env.AZURE_API_KEY || "",
+  baseURL: `https://${AZURE_RESOURCE_NAME}.openai.azure.com/anthropic`,
+});
+
+const CLAUDE_SONNET_MODEL = "claude-sonnet-4-5";
 
 interface ImageAttachment {
   name: string;
@@ -15,47 +25,6 @@ interface ExtendedMessage {
 
 export async function POST(req: Request) {
   const { messages, currentCode, model }: { messages: ExtendedMessage[]; currentCode: string; model?: string } = await req.json();
-
-  // Process messages to include images with vision support
-  const processedMessages = messages.map((msg) => {
-    if (msg.images && msg.images.length > 0) {
-      // Format message with vision content parts
-      const contentParts: any[] = [];
-      
-      // Add text content with image URLs
-      const imageUrlsText = msg.images
-        .map((img, idx) => `Image ${idx + 1}: ${img.url}`)
-        .join('\n');
-      
-      const textContent = msg.content && msg.content.trim()
-        ? `${msg.content}\n\n[Uploaded Images - Use these URLs in your HTML]:\n${imageUrlsText}`
-        : `[Uploaded Images - Use these URLs in your HTML]:\n${imageUrlsText}`;
-      
-      contentParts.push({
-        type: 'text',
-        text: textContent
-      });
-      
-      // Add each image as an image part for vision
-      msg.images.forEach((img) => {
-        contentParts.push({
-          type: 'image',
-          image: img.url
-        });
-      });
-      
-      return {
-        role: msg.role,
-        content: contentParts
-      };
-    }
-    
-    // For messages without images, keep as simple string content
-    return {
-      role: msg.role,
-      content: msg.content
-    };
-  });
 
   const systemPrompt = `You are an expert web developer assistant helping users build HTML pages.
 
@@ -84,13 +53,111 @@ When the user provides images:
 
 When modifying existing code, carefully read the current code and make only the requested changes while preserving the overall structure unless asked to rebuild from scratch.`;
 
-  // Select the appropriate model
-  const selectedModel = model === 'claude' 
-    ? anthropic('claude-sonnet-4-5-20250929')
-    : openai('gpt-5-mini');
+  // Use Azure-hosted Claude Sonnet as default, GPT only when explicitly selected
+  if (model !== 'gpt') {
+    // Process messages for Anthropic SDK format
+    const anthropicMessages: Anthropic.MessageParam[] = messages.map((msg) => {
+      if (msg.images && msg.images.length > 0) {
+        const contentParts: Anthropic.ContentBlockParam[] = [];
+        
+        // Add text content with image URLs
+        const imageUrlsText = msg.images
+          .map((img, idx) => `Image ${idx + 1}: ${img.url}`)
+          .join('\n');
+        
+        const textContent = msg.content && msg.content.trim()
+          ? `${msg.content}\n\n[Uploaded Images - Use these URLs in your HTML]:\n${imageUrlsText}`
+          : `[Uploaded Images - Use these URLs in your HTML]:\n${imageUrlsText}`;
+        
+        contentParts.push({
+          type: 'text',
+          text: textContent
+        });
+        
+        // Add each image as an image part for vision
+        msg.images.forEach((img) => {
+          contentParts.push({
+            type: 'image',
+            source: {
+              type: 'url',
+              url: img.url
+            }
+          });
+        });
+        
+        return {
+          role: msg.role as 'user' | 'assistant',
+          content: contentParts
+        };
+      }
+      
+      return {
+        role: msg.role as 'user' | 'assistant',
+        content: msg.content
+      };
+    });
+
+    const response = await anthropicClient.messages.create({
+      model: CLAUDE_SONNET_MODEL,
+      max_tokens: 8192,
+      system: systemPrompt,
+      messages: anthropicMessages,
+    });
+
+    // Extract text content from response
+    const assistantContent = response.content
+      .filter((block: Anthropic.ContentBlock): block is Anthropic.TextBlock => block.type === 'text')
+      .map((block: Anthropic.TextBlock) => block.text)
+      .join('\n');
+
+    const extendedMessages: ExtendedMessage[] = [
+      ...messages,
+      { role: 'assistant', content: assistantContent }
+    ];
+
+    return Response.json({ messages: extendedMessages });
+  }
+
+  // Use OpenAI GPT only when explicitly selected (model === 'gpt')
+  // Process messages for AI SDK (OpenAI) format
+  const processedMessages = messages.map((msg) => {
+    if (msg.images && msg.images.length > 0) {
+      const contentParts: any[] = [];
+      
+      const imageUrlsText = msg.images
+        .map((img, idx) => `Image ${idx + 1}: ${img.url}`)
+        .join('\n');
+      
+      const textContent = msg.content && msg.content.trim()
+        ? `${msg.content}\n\n[Uploaded Images - Use these URLs in your HTML]:\n${imageUrlsText}`
+        : `[Uploaded Images - Use these URLs in your HTML]:\n${imageUrlsText}`;
+      
+      contentParts.push({
+        type: 'text',
+        text: textContent
+      });
+      
+      msg.images.forEach((img) => {
+        contentParts.push({
+          type: 'image',
+          image: img.url
+        });
+      });
+      
+      return {
+        role: msg.role,
+        content: contentParts
+      };
+    }
+    
+    return {
+      role: msg.role,
+      content: msg.content
+    };
+  });
 
   const { response } = await generateText({
-    model: selectedModel,
+    model: openai('gpt-5-mini'),
     system: systemPrompt,
     messages: processedMessages as any[],
   });

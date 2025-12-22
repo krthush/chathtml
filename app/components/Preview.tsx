@@ -60,7 +60,7 @@ function dataUrlToFile(dataUrl: string, filenameBase: string) {
   const isBase64 = Boolean(match[2]);
   const dataPart = match[3] || '';
 
-  let bytes: Uint8Array;
+  let bytes: Uint8Array<ArrayBuffer>;
   if (isBase64) {
     const binary = atob(dataPart);
     bytes = new Uint8Array(binary.length);
@@ -161,7 +161,6 @@ export default function Preview({ code, onChange }: PreviewProps) {
 
     // execCommand is deprecated but still widely supported for contentEditable in iframes.
     try {
-      // @ts-expect-error: execCommand exists in DOM but may be missing from TS lib target.
       iframeDoc.execCommand('insertHTML', false, html);
     } catch {
       const selection = iframeDoc.getSelection();
@@ -183,7 +182,6 @@ export default function Preview({ code, onChange }: PreviewProps) {
     if (!iframeDoc) return;
     restoreSelectionRange();
     try {
-      // @ts-expect-error: execCommand exists in DOM but may be missing from TS lib target.
       iframeDoc.execCommand('insertText', false, text);
     } catch {
       const selection = iframeDoc.getSelection();

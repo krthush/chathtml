@@ -1244,6 +1244,14 @@ function MessageContent({
                   )}
                 </pre>
               </div>
+              {part.open && (
+                <div className="mt-1.5 flex items-center gap-2 text-[10px] md:text-xs text-slate-500">
+                  <div className="w-3.5 h-3.5 border-2 border-slate-300/50 border-t-purple-400 rounded-full animate-spin"></div>
+                  <span>
+                    Streaming… edits can take a long time for large pages.
+                  </span>
+                </div>
+              )}
               {showUpdated && (
                 <div className="flex items-center gap-1 text-[10px] md:text-xs text-purple-600 mt-1.5 md:mt-2 font-medium">
                   <CheckCircle2 className="w-2.5 md:w-3 h-2.5 md:h-3" />

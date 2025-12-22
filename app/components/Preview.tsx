@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Eye, Smartphone, Monitor, X, Save, Bold, Italic, Strikethrough, List, ListOrdered, Heading1, Heading2, Heading3, Heading4, Heading5, Image, Share2 } from 'lucide-react';
+import { Eye, Smartphone, Monitor, X, Save, Bold, Italic, Strikethrough, List, ListOrdered, Heading1, Heading2, Heading3, Heading4, Heading5, Image, ImagePlus, Share2 } from 'lucide-react';
 
 interface PreviewProps {
   code: string;
@@ -15,6 +15,97 @@ interface ContextMenuPosition {
   y: number;
 }
 
+const MAX_IMAGE_URL_LENGTH = 2048;
+
+function sanitizePastedHtmlRemoveImages(html: string) {
+  if (!html) return html;
+
+  // Remove common image-related tags. Keep everything else intact.
+  let out = html
+    .replace(/<img\b[^>]*>/gi, '')
+    .replace(/<picture\b[^>]*>[\s\S]*?<\/picture>/gi, '')
+    .replace(/<svg\b[^>]*>[\s\S]*?<\/svg>/gi, '');
+
+  // Remove inline base64 image URLs in style attributes (best-effort).
+  out = out.replace(/url\(\s*['"]?\s*data:image\/[^'")]+['"]?\s*\)/gi, '');
+
+  return out;
+}
+
+function replacePastedImagesWithPlaceholders(html: string, pasteId: string) {
+  if (!html) return { html, placeholderCount: 0 };
+
+  let idx = 0;
+  const makePlaceholder = () => {
+    idx += 1;
+    // span is safe in most contexts and easy to query/replace later
+    return `<span data-chathtml-img-ph="${idx}" data-chathtml-paste-id="${pasteId}" style="display:inline-block;min-width:1px;min-height:1em;"></span>`;
+  };
+
+  // Replace <picture> blocks first (they often wrap <img>)
+  let out = html.replace(/<picture\b[^>]*>[\s\S]*?<\/picture>/gi, () => makePlaceholder());
+  // Replace <img ...>
+  out = out.replace(/<img\b[^>]*>/gi, () => makePlaceholder());
+
+  return { html: out, placeholderCount: idx };
+}
+
+function dataUrlToFile(dataUrl: string, filenameBase: string) {
+  // Supports base64 and non-base64 data URLs.
+  // Example: data:image/png;base64,iVBORw0...
+  // Example: data:image/svg+xml,%3Csvg%20...%3E
+  const match = dataUrl.match(/^data:([^;,]+)(;base64)?,(.*)$/i);
+  if (!match) return null;
+  const mime = match[1] || 'application/octet-stream';
+  const isBase64 = Boolean(match[2]);
+  const dataPart = match[3] || '';
+
+  let bytes: Uint8Array;
+  if (isBase64) {
+    const binary = atob(dataPart);
+    bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  } else {
+    // Data is URL-encoded
+    const decoded = decodeURIComponent(dataPart);
+    bytes = new TextEncoder().encode(decoded);
+  }
+
+  const extFromMime = (m: string) => {
+    if (m.includes('png')) return 'png';
+    if (m.includes('jpeg') || m.includes('jpg')) return 'jpg';
+    if (m.includes('gif')) return 'gif';
+    if (m.includes('webp')) return 'webp';
+    if (m.includes('svg')) return 'svg';
+    return 'bin';
+  };
+
+  const ext = extFromMime(mime);
+  const file = new File([bytes], `${filenameBase}.${ext}`, { type: mime });
+  return file;
+}
+
+function replaceDataImageTagsWithPlaceholders(html: string, pasteId: string) {
+  if (!html) return { html, files: [] as File[] };
+
+  let idx = 0;
+  const files: File[] = [];
+
+  const out = html.replace(/<img\b[^>]*>/gi, (full) => {
+    const srcMatch = full.match(/\ssrc\s*=\s*(['"])(.*?)\1/i);
+    const src = srcMatch?.[2] ?? '';
+    if (!src || !src.startsWith('data:image/')) return full;
+
+    idx += 1;
+    const file = dataUrlToFile(src, `pasted-image-${idx}`);
+    if (file) files.push(file);
+
+    return `<span data-chathtml-img-ph="${idx}" data-chathtml-paste-id="${pasteId}" style="display:inline-block;min-width:1px;min-height:1em;"></span>`;
+  });
+
+  return { html: out, files };
+}
+
 export default function Preview({ code, onChange }: PreviewProps) {
   const [viewMode, setViewMode] = useState<ViewMode>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -22,11 +113,163 @@ export default function Preview({ code, onChange }: PreviewProps) {
   const [contextMenu, setContextMenu] = useState<ContextMenuPosition | null>(null);
   const [showImagePrompt, setShowImagePrompt] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
+  const [imageError, setImageError] = useState<string | null>(null);
+  const [pasteNotice, setPasteNotice] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [showShareUpdateModal, setShowShareUpdateModal] = useState(false);
   const [isUpdatingShare, setIsUpdatingShare] = useState(false);
   const [existingShareId, setExistingShareId] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
+  const imageFileInputRef = useRef<HTMLInputElement>(null);
+  const pasteNoticeTimeoutRef = useRef<number | null>(null);
+  const savedSelectionRangeRef = useRef<Range | null>(null);
+  const iframeCleanupRef = useRef<null | (() => void)>(null);
+
+  const showNotice = useCallback((msg: string) => {
+    setPasteNotice(msg);
+    if (pasteNoticeTimeoutRef.current) {
+      window.clearTimeout(pasteNoticeTimeoutRef.current);
+    }
+    pasteNoticeTimeoutRef.current = window.setTimeout(() => setPasteNotice(null), 4500);
+  }, []);
+
+  const captureSelectionRange = useCallback(() => {
+    const iframeDoc = iframeRef.current?.contentDocument;
+    if (!iframeDoc) return;
+    const sel = iframeDoc.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    // Clone so it survives focus changes caused by modals.
+    savedSelectionRangeRef.current = sel.getRangeAt(0).cloneRange();
+  }, []);
+
+  const restoreSelectionRange = useCallback(() => {
+    const iframeDoc = iframeRef.current?.contentDocument;
+    if (!iframeDoc) return;
+    const sel = iframeDoc.getSelection();
+    if (!sel) return;
+    const range = savedSelectionRangeRef.current;
+    if (!range) return;
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }, []);
+
+  const insertHtmlAtCursor = useCallback((html: string) => {
+    const iframeDoc = iframeRef.current?.contentDocument;
+    if (!iframeDoc) return;
+    restoreSelectionRange();
+
+    // execCommand is deprecated but still widely supported for contentEditable in iframes.
+    try {
+      // @ts-expect-error: execCommand exists in DOM but may be missing from TS lib target.
+      iframeDoc.execCommand('insertHTML', false, html);
+    } catch {
+      const selection = iframeDoc.getSelection();
+      if (!selection || selection.rangeCount === 0) return;
+      const range = selection.getRangeAt(0);
+      range.deleteContents();
+      const wrapper = iframeDoc.createElement('div');
+      wrapper.innerHTML = html;
+      const frag = iframeDoc.createDocumentFragment();
+      while (wrapper.firstChild) frag.appendChild(wrapper.firstChild);
+      range.insertNode(frag);
+    }
+
+    iframeDoc.body.dispatchEvent(new Event('input', { bubbles: true }));
+  }, [restoreSelectionRange]);
+
+  const insertTextAtCursor = useCallback((text: string) => {
+    const iframeDoc = iframeRef.current?.contentDocument;
+    if (!iframeDoc) return;
+    restoreSelectionRange();
+    try {
+      // @ts-expect-error: execCommand exists in DOM but may be missing from TS lib target.
+      iframeDoc.execCommand('insertText', false, text);
+    } catch {
+      const selection = iframeDoc.getSelection();
+      if (!selection || selection.rangeCount === 0) return;
+      const range = selection.getRangeAt(0);
+      range.deleteContents();
+      range.insertNode(iframeDoc.createTextNode(text));
+    }
+    iframeDoc.body.dispatchEvent(new Event('input', { bubbles: true }));
+  }, [restoreSelectionRange]);
+
+  const uploadImageToService = useCallback(async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      throw new Error(`${file.name} is not an image file`);
+    }
+    const formData = new FormData();
+    formData.append('image', file);
+    const response = await fetch('/api/upload-image', { method: 'POST', body: formData });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error || 'Upload failed');
+    }
+    return (await response.json()) as { name: string; url: string };
+  }, []);
+
+  const insertUploadedImagesAtCursor = useCallback((items: Array<{ url: string; name: string }>) => {
+    if (!items.length) return;
+    const html = items
+      .map(({ url, name }) => {
+        const safeAlt = (name || 'Uploaded image').replace(/"/g, '&quot;');
+        return `<img src="${url}" alt="${safeAlt}" style="max-width:100%;height:auto;" />`;
+      })
+      .join('<br/>');
+    insertHtmlAtCursor(html);
+  }, [insertHtmlAtCursor]);
+
+  const replacePlaceholdersWithUploadedImages = useCallback((params: { pasteId: string; uploaded: Array<{ url: string; name: string }> }) => {
+    const iframeDoc = iframeRef.current?.contentDocument;
+    if (!iframeDoc) return;
+    const nodes = Array.from(
+      iframeDoc.querySelectorAll(`span[data-chathtml-img-ph][data-chathtml-paste-id="${params.pasteId}"]`)
+    ) as HTMLSpanElement[];
+
+    // Replace in DOM order with uploaded images.
+    for (let i = 0; i < nodes.length; i++) {
+      const ph = nodes[i];
+      const item = params.uploaded[i];
+      if (!item) {
+        // No uploaded image for this placeholder -> remove placeholder
+        ph.remove();
+        continue;
+      }
+      const img = iframeDoc.createElement('img');
+      img.src = item.url;
+      img.alt = item.name || 'Uploaded image';
+      img.style.maxWidth = '100%';
+      img.style.height = 'auto';
+      ph.replaceWith(img);
+    }
+
+    // If there are more uploads than placeholders, insert remainder at cursor
+    if (params.uploaded.length > nodes.length) {
+      const remaining = params.uploaded.slice(nodes.length);
+      insertUploadedImagesAtCursor(remaining);
+    }
+
+    iframeDoc.body.dispatchEvent(new Event('input', { bubbles: true }));
+  }, [insertUploadedImagesAtCursor]);
+
+  const sanitizeHtmlEnforceImgUrlLength = useCallback((html: string) => {
+    if (!html) return html;
+    const tooLong: string[] = [];
+    const out = html.replace(/<img\b([^>]*?)>/gi, (full) => {
+      const srcMatch = full.match(/\ssrc\s*=\s*(['"])(.*?)\1/i);
+      const src = srcMatch?.[2] ?? '';
+      if (src && src.length > MAX_IMAGE_URL_LENGTH) {
+        tooLong.push(src);
+        return '';
+      }
+      return full;
+    });
+    if (tooLong.length) {
+      showNotice(`Some pasted image URLs were too long and weren’t added (max ${MAX_IMAGE_URL_LENGTH} chars). Try “Upload Image” instead.`);
+    }
+    return out;
+  }, [showNotice]);
 
   // Setup iframe for editing (always editable)
   const setupEditableIframe = useCallback(() => {
@@ -40,6 +283,12 @@ export default function Preview({ code, onChange }: PreviewProps) {
     // Make the body contenteditable
     const body = iframeDoc.body;
     if (body) {
+      // Cleanup old listeners if we re-initialize (e.g. srcdoc reload).
+      if (iframeCleanupRef.current) {
+        iframeCleanupRef.current();
+        iframeCleanupRef.current = null;
+      }
+
       body.contentEditable = 'true';
       body.style.outline = 'none';
       body.style.cursor = 'text';
@@ -70,16 +319,184 @@ export default function Preview({ code, onChange }: PreviewProps) {
         setContextMenu(null);
       };
 
+      // Paste: if images exist as files, paste everything else immediately, but replace image tags
+      // with placeholders that get swapped with uploaded images once upload completes.
+      const handlePaste = (e: ClipboardEvent) => {
+        const cd = e.clipboardData;
+        if (!cd) return;
+
+        const imageFiles = Array.from(cd.items || [])
+          .filter((it) => it.kind === 'file' && (it.type || '').startsWith('image/'))
+          .map((it) => it.getAsFile())
+          .filter(Boolean) as File[];
+
+        const html = cd.getData('text/html');
+        const text = cd.getData('text/plain');
+
+        // If there are images in the clipboard, upload and replace pasted images.
+        if (imageFiles.length) {
+          e.preventDefault();
+          captureSelectionRange();
+          setIsUploadingImage(true);
+          showNotice(`Uploading ${imageFiles.length === 1 ? 'image' : `${imageFiles.length} images`}… (we’ll insert them automatically)`);
+
+          const pasteId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+          // Paste non-image content immediately (and keep image positions using placeholders when possible).
+          if (html) {
+            // If HTML contains <img>, replace them with placeholders so images can be swapped in-place.
+            // IMPORTANT: Do NOT enforce URL length here. Pasted <img src="data:image/..."> is often very long,
+            // but we will replace those images with uploaded URLs anyway.
+            const { html: withPlaceholders } = replacePastedImagesWithPlaceholders(html, pasteId);
+            insertHtmlAtCursor(withPlaceholders);
+          } else if (text) {
+            insertTextAtCursor(text);
+          }
+
+          (async () => {
+            try {
+              const uploaded: Array<{ name: string; url: string }> = [];
+              for (const file of imageFiles) {
+                const up = await uploadImageToService(file);
+                if (up.url.length > MAX_IMAGE_URL_LENGTH) {
+                  // Skip overly long URLs (should be rare, but guard anyway).
+                  continue;
+                }
+                uploaded.push(up);
+              }
+              if (uploaded.length) {
+                // Replace placeholders (if any) and insert remainder at cursor.
+                replacePlaceholdersWithUploadedImages({ pasteId, uploaded });
+                showNotice(`Inserted ${uploaded.length === 1 ? 'image' : `${uploaded.length} images`} into the preview.`);
+              } else {
+                showNotice(`No images were inserted. Try “Upload Image” (right click) or a smaller image URL.`);
+              }
+            } catch (err) {
+              console.error('Paste upload failed:', err);
+              showNotice('Could not upload pasted image(s). Use “Upload Image” (right click) instead.');
+            } finally {
+              setIsUploadingImage(false);
+            }
+          })();
+
+          return;
+        }
+
+        // No image files: allow normal paste, but if HTML includes images, enforce URL limits.
+        if (html && /<img\b/i.test(html)) {
+          // Some apps put images into the clipboard only as HTML <img src="data:image/..."> (no file items).
+          // In that case, we upload the data images and replace them with uploaded URLs.
+          if (/src\s*=\s*(['"])data:image\//i.test(html)) {
+            e.preventDefault();
+            captureSelectionRange();
+            setIsUploadingImage(true);
+            showNotice('Uploading pasted image… (we’ll insert it automatically)');
+
+            const pasteId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+            const { html: withPlaceholders, files } = replaceDataImageTagsWithPlaceholders(html, pasteId);
+
+            // Also enforce URL length for any remaining non-data <img src="..."> tags.
+            const cleaned = sanitizeHtmlEnforceImgUrlLength(withPlaceholders);
+            insertHtmlAtCursor(cleaned);
+
+            (async () => {
+              try {
+                const uploaded: Array<{ name: string; url: string }> = [];
+                for (const file of files) {
+                  const up = await uploadImageToService(file);
+                  if (up.url.length > MAX_IMAGE_URL_LENGTH) continue;
+                  uploaded.push(up);
+                }
+                if (uploaded.length) {
+                  replacePlaceholdersWithUploadedImages({ pasteId, uploaded });
+                  showNotice(`Inserted ${uploaded.length === 1 ? 'image' : `${uploaded.length} images`} into the preview.`);
+                } else {
+                  showNotice('No images were inserted. Try “Upload Image” (right click) instead.');
+                }
+              } catch (err) {
+                console.error('Data image paste upload failed:', err);
+                showNotice('Could not upload pasted image(s). Use “Upload Image” (right click) instead.');
+              } finally {
+                setIsUploadingImage(false);
+              }
+            })();
+
+            return;
+          }
+
+          const cleaned = sanitizeHtmlEnforceImgUrlLength(html);
+          if (cleaned !== html) {
+            e.preventDefault();
+            captureSelectionRange();
+            insertHtmlAtCursor(cleaned);
+          }
+        }
+      };
+
+      // Drop: auto-upload image files and insert.
+      const handleDrop = (e: DragEvent) => {
+        const dt = e.dataTransfer;
+        if (!dt) return;
+        const files = Array.from(dt.files || []);
+        const imageFiles = files.filter((f) => (f.type || '').startsWith('image/'));
+        if (imageFiles.length) {
+          e.preventDefault();
+          captureSelectionRange();
+          setIsUploadingImage(true);
+          showNotice(`Uploading ${imageFiles.length === 1 ? 'image' : `${imageFiles.length} images`}…`);
+
+          (async () => {
+            try {
+              const uploaded: Array<{ name: string; url: string }> = [];
+              for (const file of imageFiles) {
+                const up = await uploadImageToService(file);
+                if (up.url.length > MAX_IMAGE_URL_LENGTH) continue;
+                uploaded.push(up);
+              }
+              if (uploaded.length) {
+                insertUploadedImagesAtCursor(uploaded);
+                showNotice(`Inserted ${uploaded.length === 1 ? 'image' : `${uploaded.length} images`} into the preview.`);
+              } else {
+                showNotice(`No images were inserted. Try “Upload Image” (right click) instead.`);
+              }
+            } catch (err) {
+              console.error('Drop upload failed:', err);
+              showNotice('Could not upload dropped image(s). Use “Upload Image” (right click) instead.');
+            } finally {
+              setIsUploadingImage(false);
+            }
+          })();
+        }
+      };
+
+      const handleDragOver = (e: DragEvent) => {
+        const dt = e.dataTransfer;
+        if (!dt) return;
+        const files = Array.from(dt.items || []).filter((i) => i.kind === 'file');
+        const hasImageFile = files.some((i) => (i.type || '').startsWith('image/'));
+        if (hasImageFile) {
+          e.preventDefault();
+        }
+      };
+
       body.addEventListener('input', handleInput);
       body.addEventListener('contextmenu', handleContextMenu);
       body.addEventListener('click', handleClick);
+      body.addEventListener('paste', handlePaste as any);
+      body.addEventListener('drop', handleDrop as any);
+      body.addEventListener('dragover', handleDragOver as any);
       
       // Cleanup
-      return () => {
+      const cleanup = () => {
         body.removeEventListener('input', handleInput);
         body.removeEventListener('contextmenu', handleContextMenu);
         body.removeEventListener('click', handleClick);
+        body.removeEventListener('paste', handlePaste as any);
+        body.removeEventListener('drop', handleDrop as any);
+        body.removeEventListener('dragover', handleDragOver as any);
       };
+      iframeCleanupRef.current = cleanup;
+      return cleanup;
     }
   }, []);
 
@@ -98,6 +515,10 @@ export default function Preview({ code, onChange }: PreviewProps) {
 
     return () => {
       iframe.removeEventListener('load', handleLoad);
+      if (iframeCleanupRef.current) {
+        iframeCleanupRef.current();
+        iframeCleanupRef.current = null;
+      }
     };
   }, [setupEditableIframe]);
 
@@ -308,16 +729,23 @@ export default function Preview({ code, onChange }: PreviewProps) {
   // Insert image with URL
   const insertImage = () => {
     setContextMenu(null);
+    setImageError(null);
+    captureSelectionRange();
     setShowImagePrompt(true);
   };
 
   const handleImageInsert = () => {
     if (!imageUrl.trim()) return;
+    if (imageUrl.trim().length > MAX_IMAGE_URL_LENGTH) {
+      setImageError(`Image URL is too long (max ${MAX_IMAGE_URL_LENGTH} characters). Consider using “Upload Image” instead.`);
+      return;
+    }
     
     if (!iframeRef.current) return;
     const iframeDoc = iframeRef.current.contentDocument;
     if (!iframeDoc) return;
 
+    restoreSelectionRange();
     const selection = iframeDoc.getSelection();
     if (!selection || selection.rangeCount === 0) return;
 
@@ -336,6 +764,37 @@ export default function Preview({ code, onChange }: PreviewProps) {
     
     setShowImagePrompt(false);
     setImageUrl('');
+    setImageError(null);
+  };
+
+  const handleUploadImageClick = () => {
+    setImageError(null);
+    captureSelectionRange();
+    imageFileInputRef.current?.click();
+  };
+
+  const handleUploadImageFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingImage(true);
+    setImageError(null);
+    try {
+      const uploaded = await uploadImageToService(file);
+      if (uploaded.url.length > MAX_IMAGE_URL_LENGTH) {
+        setImageError(`Uploaded image URL is too long (max ${MAX_IMAGE_URL_LENGTH} characters).`);
+        return;
+      }
+      insertHtmlAtCursor(`<img src="${uploaded.url}" alt="${uploaded.name.replace(/"/g, '&quot;')}" style="max-width:100%;height:auto;" />`);
+      setShowImagePrompt(false);
+      setImageUrl('');
+      showNotice('Image uploaded and inserted into the preview.');
+    } catch (err) {
+      setImageError(err instanceof Error ? err.message : 'Failed to upload image');
+    } finally {
+      setIsUploadingImage(false);
+      // Reset input so selecting same file again works
+      if (e.target) e.target.value = '';
+    }
   };
 
   // Context menu items
@@ -351,6 +810,7 @@ export default function Preview({ code, onChange }: PreviewProps) {
     { icon: Heading4, label: 'Heading 4', action: () => applyFormatting('h4', true) },
     { icon: Heading5, label: 'Heading 5', action: () => applyFormatting('h5', true) },
     { icon: Image, label: 'Insert Image', action: insertImage },
+    { icon: ImagePlus, label: 'Upload Image', action: handleUploadImageClick },
   ];
 
   return (
@@ -401,6 +861,13 @@ export default function Preview({ code, onChange }: PreviewProps) {
         </div>
       </div>
       <div className="flex-1 relative bg-slate-50">
+        {pasteNotice && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40 max-w-[90%]">
+            <div className="bg-white/95 border border-slate-200 shadow-lg rounded-xl px-4 py-2 text-sm text-slate-700 backdrop-blur-sm">
+              {pasteNotice}
+            </div>
+          </div>
+        )}
         <iframe
           ref={iframeRef}
           title="preview"
@@ -462,6 +929,24 @@ export default function Preview({ code, onChange }: PreviewProps) {
               className="w-full px-3 py-2 border border-slate-300 rounded-lg mb-4 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-rose-500"
               autoFocus
             />
+            <div className="text-xs text-slate-500 mb-3 flex items-center justify-between">
+              <span>Max URL length: {MAX_IMAGE_URL_LENGTH}</span>
+              <span className={imageUrl.length > MAX_IMAGE_URL_LENGTH ? 'text-red-600 font-medium' : ''}>
+                {imageUrl.length}/{MAX_IMAGE_URL_LENGTH}
+              </span>
+            </div>
+            {imageError && (
+              <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {imageError}
+              </div>
+            )}
+            <input
+              ref={imageFileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleUploadImageFile}
+              className="hidden"
+            />
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => { setShowImagePrompt(false); setImageUrl(''); }}
@@ -470,12 +955,24 @@ export default function Preview({ code, onChange }: PreviewProps) {
                 Cancel
               </button>
               <button
+                onClick={handleUploadImageClick}
+                disabled={isUploadingImage}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                title="Upload an image and insert it"
+              >
+                <ImagePlus className="w-4 h-4" />
+                {isUploadingImage ? 'Uploading…' : 'Upload'}
+              </button>
+              <button
                 onClick={handleImageInsert}
                 className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition-colors text-sm font-medium"
               >
                 Insert
               </button>
             </div>
+            <p className="text-xs text-slate-500 mt-3">
+              Tip: You can also right click inside the preview and choose “Upload Image”.
+            </p>
           </div>
         </div>
       )}

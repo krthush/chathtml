@@ -455,6 +455,9 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
       const response = await fetch('/api/chat', {
         method: 'POST',
         body: JSON.stringify({
+          // IMPORTANT: send the canonical message list (current state + this new message).
+          // We optimistically added `userMessage` to state above, but React state updates are async.
+          // Using `messages` from the current render keeps this stable and avoids duplication.
           messages: [...messages, userMessage],
           currentCode: currentCode,
           model: selectedModel,
@@ -463,10 +466,8 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
 
       const { messages: newMessages } = await response.json();
 
-      setMessages(currentMessages => [
-        ...currentMessages,
-        ...newMessages,
-      ]);
+      // Server returns the full, canonical conversation. Replace local state to avoid duplication.
+      setMessages(newMessages);
     } catch (error) {
       console.error('Error:', error);
     } finally {

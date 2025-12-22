@@ -2,7 +2,7 @@
 
 import type { ModelMessage } from 'ai';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Bot, User, Sparkles, CheckCircle2, Maximize2, X, ImagePlus, FileText, Save, Plus, Brain, Undo2 } from 'lucide-react';
+import { Send, Square, Bot, User, Sparkles, CheckCircle2, Maximize2, X, ImagePlus, FileText, Save, Plus, Brain, Undo2 } from 'lucide-react';
 
 interface ImageAttachment {
   name: string;
@@ -36,6 +36,9 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<ExtendedMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasAssistantStarted, setHasAssistantStarted] = useState(false);
+  const [showThinkingSteps, setShowThinkingSteps] = useState(false);
+  const [streamState, setStreamState] = useState<'thinking' | 'streaming' | null>(null);
   const [modalCode, setModalCode] = useState<{ code: string; lang: string } | null>(null);
   const [uploadedImages, setUploadedImages] = useState<ImageAttachment[]>([]);
   const [showTemplates, setShowTemplates] = useState(false);
@@ -43,7 +46,7 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [templateName, setTemplateName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<'claude' | 'gpt'>('claude');
+  const [selectedModel, setSelectedModel] = useState<'claude' | 'gpt'>('gpt');
   const [showModelDropdown, setShowModelDropdown] = useState(false);
   const [messagesWithCode, setMessagesWithCode] = useState<Set<number>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -53,6 +56,9 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const templateDropdownRef = useRef<HTMLDivElement>(null);
   const modelDropdownRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const pendingAssistantDeltaRef = useRef<string>('');
+  const flushRafRef = useRef<number | null>(null);
 
   // Keep ref in sync with currentCode
   useEffect(() => {
@@ -66,7 +72,8 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
   ];
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // During streaming we update frequently; avoid "smooth" which can look jumpy.
+    messagesEndRef.current?.scrollIntoView({ behavior: isLoading ? 'auto' : 'smooth' });
   };
 
   // Local storage helpers for code history
@@ -114,6 +121,40 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  const handleStop = useCallback(() => {
+    // Flush any buffered deltas before stopping.
+    if (flushRafRef.current) {
+      cancelAnimationFrame(flushRafRef.current);
+      flushRafRef.current = null;
+    }
+    const buffered = pendingAssistantDeltaRef.current;
+    pendingAssistantDeltaRef.current = '';
+    if (buffered) {
+      setMessages(prev => {
+        const next = [...prev];
+        const last = next[next.length - 1];
+        if (!last || last.role !== 'assistant') {
+          next.push({ role: 'assistant', content: buffered });
+          return next;
+        }
+        next[next.length - 1] = { ...last, content: (last.content || '') + buffered };
+        return next;
+      });
+    }
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    setIsLoading(false);
+    setHasAssistantStarted(false);
+    setStreamState(null);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+      abortControllerRef.current = null;
+    };
+  }, []);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -432,6 +473,8 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
     setInput('');
     setUploadedImages([]);
     setIsLoading(true);
+    setHasAssistantStarted(false);
+    setStreamState('thinking');
     
     // Reset textarea height
     if (textareaRef.current) {
@@ -452,26 +495,138 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
     ]);
 
     try {
+      abortControllerRef.current?.abort();
+      const abortController = new AbortController();
+      abortControllerRef.current = abortController;
+
       const response = await fetch('/api/chat', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'text/event-stream',
+        },
         body: JSON.stringify({
           // IMPORTANT: send the canonical message list (current state + this new message).
           // We optimistically added `userMessage` to state above, but React state updates are async.
           // Using `messages` from the current render keeps this stable and avoids duplication.
           messages: [...messages, userMessage],
-          currentCode: currentCode,
+          currentCode: currentCodeRef.current,
           model: selectedModel,
+          stream: true,
+          showPlan: showThinkingSteps,
+          maxTokens: 100000,
         }),
+        signal: abortController.signal,
       });
 
-      const { messages: newMessages } = await response.json();
+      if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        throw new Error(text || `Request failed (${response.status})`);
+      }
+      if (!response.body) {
+        throw new Error('No response body (streaming not supported)');
+      }
 
-      // Server returns the full, canonical conversation. Replace local state to avoid duplication.
-      setMessages(newMessages);
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      const handleEvent = (raw: string) => {
+        const lines = raw.split('\n');
+        let eventName = 'message';
+        const dataLines: string[] = [];
+
+        for (const line of lines) {
+          if (line.startsWith('event:')) eventName = line.slice(6).trim();
+          if (line.startsWith('data:')) dataLines.push(line.slice(5).trimStart());
+        }
+
+        const dataStr = dataLines.join('\n').trim();
+        const data = dataStr ? JSON.parse(dataStr) : null;
+
+        if (eventName === 'status') {
+          const state = data?.state as 'thinking' | 'streaming' | undefined;
+          if (state) setStreamState(state);
+          return;
+        }
+
+        if (eventName === 'token') {
+          const delta = (data?.delta ?? '') as string;
+          if (!delta) return;
+          setHasAssistantStarted(true);
+          setStreamState('streaming');
+          pendingAssistantDeltaRef.current += delta;
+          if (flushRafRef.current == null) {
+            flushRafRef.current = requestAnimationFrame(() => {
+              flushRafRef.current = null;
+              const buffered = pendingAssistantDeltaRef.current;
+              pendingAssistantDeltaRef.current = '';
+              if (!buffered) return;
+              setMessages(prev => {
+                const next = [...prev];
+                const last = next[next.length - 1];
+                if (!last || last.role !== 'assistant') {
+                  next.push({ role: 'assistant', content: buffered });
+                  return next;
+                }
+                next[next.length - 1] = { ...last, content: (last.content || '') + buffered };
+                return next;
+              });
+            });
+          }
+          return;
+        }
+
+        if (eventName === 'done') {
+          // Flush any remaining buffered deltas ASAP.
+          if (flushRafRef.current) {
+            cancelAnimationFrame(flushRafRef.current);
+            flushRafRef.current = null;
+          }
+          const buffered = pendingAssistantDeltaRef.current;
+          pendingAssistantDeltaRef.current = '';
+          if (buffered) {
+            setMessages(prev => {
+              const next = [...prev];
+              const last = next[next.length - 1];
+              if (!last || last.role !== 'assistant') {
+                next.push({ role: 'assistant', content: buffered });
+                return next;
+              }
+              next[next.length - 1] = { ...last, content: (last.content || '') + buffered };
+              return next;
+            });
+          }
+          return;
+        }
+
+        if (eventName === 'error') {
+          throw new Error(data?.message || 'Model error');
+        }
+      };
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        let idx: number;
+        while ((idx = buffer.indexOf('\n\n')) >= 0) {
+          const raw = buffer.slice(0, idx);
+          buffer = buffer.slice(idx + 2);
+          if (raw.trim()) handleEvent(raw);
+        }
+      }
     } catch (error) {
-      console.error('Error:', error);
+      // Abort is expected when user hits Stop.
+      if ((error as any)?.name !== 'AbortError') {
+        console.error('Error:', error);
+      }
     } finally {
       setIsLoading(false);
+      setHasAssistantStarted(false);
+      setStreamState(null);
+      abortControllerRef.current = null;
     }
   };
 
@@ -533,7 +688,7 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
                       selectedModel === 'gpt' ? 'bg-purple-600' : 'bg-transparent border border-slate-300'
                     }`}></div>
                     <div className="flex-1">
-                      <div className="font-medium text-slate-900 text-sm">GPT-5 Mini</div>
+                      <div className="font-medium text-slate-900 text-sm">GPT-5.2</div>
                       <div className="text-xs text-slate-500">OpenAI</div>
                     </div>
                   </div>
@@ -542,6 +697,18 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
             )}
           </div>
           
+          {/* Thinking / Plan Toggle */}
+          <button
+            onClick={() => setShowThinkingSteps(v => !v)}
+            className={`p-1.5 rounded-lg transition-all backdrop-blur-sm flex items-center gap-1.5 ${
+              showThinkingSteps ? 'bg-white/30 hover:bg-white/40' : 'bg-white/20 hover:bg-white/30'
+            }`}
+            title={showThinkingSteps ? 'Thinking steps: ON (shows a short Plan section)' : 'Thinking steps: OFF'}
+          >
+            <CheckCircle2 className="w-3 md:w-4 h-3 md:h-4 text-white" />
+            <span className="hidden md:inline text-xs text-white/90">Plan</span>
+          </button>
+
           {/* Templates Button */}
           <div className="relative" ref={templateDropdownRef}>
             <button
@@ -731,7 +898,7 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
             </div>
           ))}
 
-          {isLoading && (
+          {isLoading && !hasAssistantStarted && (
             <div className="flex gap-2 md:gap-3 justify-start">
               <div className="w-6 md:w-8 h-6 md:h-8 rounded-xl bg-linear-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center shrink-0 shadow-lg shadow-purple-500/30">
                 <Bot className="w-3 md:w-4.5 h-3 md:h-4.5 text-white" />
@@ -741,6 +908,9 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
                   <span className="w-2 h-2 bg-linear-to-r from-violet-500 to-fuchsia-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
                   <span className="w-2 h-2 bg-linear-to-r from-violet-500 to-fuchsia-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
                   <span className="w-2 h-2 bg-linear-to-r from-violet-500 to-fuchsia-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                </div>
+                <div className="mt-1 text-[10px] text-slate-500">
+                  {streamState === 'streaming' ? 'Generating…' : 'Thinking…'}
                 </div>
               </div>
             </div>
@@ -811,17 +981,28 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
                 }
               }}
               placeholder="Ask me anything..."
-              disabled={isLoading}
+              disabled={false}
               rows={1}
-              className="flex-1 bg-transparent border-none outline-none text-slate-800 placeholder-slate-400 text-sm md:text-[15px] disabled:opacity-50 resize-none max-h-32"
+              className="flex-1 bg-transparent border-none outline-none text-slate-800 placeholder-slate-400 text-sm md:text-[15px] resize-none max-h-32"
             />
-            <button
-              onClick={handleSend}
-              disabled={(!input.trim() && uploadedImages.length === 0) || isLoading}
-              className="w-7 md:w-9 h-7 md:h-9 rounded-lg md:rounded-xl bg-linear-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 disabled:from-slate-300 disabled:to-slate-300 disabled:cursor-not-allowed flex items-center justify-center transition-all shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 disabled:shadow-none"
-            >
-              <Send className="w-3.5 md:w-4 h-3.5 md:h-4 text-white" />
-            </button>
+            {isLoading ? (
+              <button
+                onClick={handleStop}
+                className="w-7 md:w-9 h-7 md:h-9 rounded-lg md:rounded-xl bg-slate-200 hover:bg-slate-300 flex items-center justify-center transition-all shadow-md"
+                title="Stop generating"
+              >
+                <Square className="w-3.5 md:w-4 h-3.5 md:h-4 text-slate-700" />
+              </button>
+            ) : (
+              <button
+                onClick={handleSend}
+                disabled={!input.trim() && uploadedImages.length === 0}
+                className="w-7 md:w-9 h-7 md:h-9 rounded-lg md:rounded-xl bg-linear-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 disabled:from-slate-300 disabled:to-slate-300 disabled:cursor-not-allowed flex items-center justify-center transition-all shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 disabled:shadow-none"
+                title="Send"
+              >
+                <Send className="w-3.5 md:w-4 h-3.5 md:h-4 text-white" />
+              </button>
+            )}
           </div>
           <p className="text-[10px] md:text-xs text-slate-400 text-center mt-1 md:mt-2 hidden md:block">
             Press Enter to send • Shift + Enter for new line
@@ -970,49 +1151,110 @@ function MessageContent({
   role: string;
   onCodeClick: (code: { code: string; lang: string }) => void;
 }) {
-  const parts = content.split(/(```[\s\S]*?```)/g);
+  const parseFencedBlocks = (text: string) => {
+    const out: Array<
+      | { type: 'text'; text: string }
+      | { type: 'code'; lang: string; code: string; open: boolean }
+    > = [];
+
+    let pos = 0;
+    let inCode = false;
+    let lang = '';
+
+    while (pos < text.length) {
+      const fenceIdx = text.indexOf('```', pos);
+      if (fenceIdx === -1) break;
+
+      if (!inCode) {
+        if (fenceIdx > pos) {
+          out.push({ type: 'text', text: text.slice(pos, fenceIdx) });
+        }
+        const afterFence = fenceIdx + 3;
+        const nlIdx = text.indexOf('\n', afterFence);
+        if (nlIdx === -1) {
+          // Fence started but we don't even have a newline yet.
+          lang = text.slice(afterFence).trim();
+          out.push({ type: 'code', lang, code: '', open: true });
+          return out;
+        }
+        lang = text.slice(afterFence, nlIdx).trim();
+        inCode = true;
+        pos = nlIdx + 1;
+        continue;
+      }
+
+      // in code
+      out.push({ type: 'code', lang, code: text.slice(pos, fenceIdx), open: false });
+      inCode = false;
+      lang = '';
+      pos = fenceIdx + 3;
+    }
+
+    if (!inCode) {
+      if (pos < text.length) out.push({ type: 'text', text: text.slice(pos) });
+      return out;
+    }
+
+    // Unclosed code block.
+    out.push({ type: 'code', lang, code: text.slice(pos), open: true });
+    return out;
+  };
+
+  const parts = parseFencedBlocks(content);
   
   return (
     <div className="text-xs md:text-[15px] leading-relaxed">
       {parts.map((part, i) => {
-        if (part.startsWith('```')) {
-          const codeMatch = part.match(/```(\w+)?\n([\s\S]*?)```/);
-          if (codeMatch) {
-            const [, lang, code] = codeMatch;
-            const trimmedCode = code.trim();
-            return (
-              <div key={i} className="my-2 md:my-3 -mx-1">
-                <div 
-                  className="bg-slate-900 text-slate-100 rounded-lg md:rounded-xl p-2 md:p-3 text-[10px] md:text-xs font-mono overflow-hidden cursor-pointer hover:ring-2 hover:ring-purple-500 transition-all group relative shadow-lg"
-                  onClick={() => onCodeClick({ code: trimmedCode, lang: lang || 'code' })}
-                >
-                  {lang && (
-                    <div className="text-slate-400 mb-1.5 md:mb-2 text-[9px] md:text-[10px] uppercase font-bold flex items-center justify-between">
-                      <span className="bg-linear-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent">{lang}</span>
-                      <div className="flex items-center gap-0.5 md:gap-1 text-slate-500 group-hover:text-purple-400 transition-colors">
-                        <Maximize2 className="w-2.5 md:w-3 h-2.5 md:h-3" />
-                        <span className="text-[8px] md:text-[9px] hidden md:inline">Click to expand</span>
-                      </div>
-                    </div>
-                  )}
-                  <pre className="whitespace-pre-wrap max-h-[100px] md:max-h-[150px] overflow-hidden relative">
-                    {trimmedCode}
-                    {trimmedCode.split('\n').length > 8 && (
-                      <div className="absolute bottom-0 left-0 right-0 h-12 bg-linear-to-t from-slate-900 to-transparent"></div>
+        if (part.type === 'code') {
+          const displayLang = part.lang || 'code';
+          const trimmedCode = part.code.replace(/\s+$/, '');
+          const showUpdated = displayLang === 'html' && !part.open;
+
+          return (
+            <div key={i} className="my-2 md:my-3 -mx-1">
+              <div
+                className={`bg-slate-900 text-slate-100 rounded-lg md:rounded-xl p-2 md:p-3 text-[10px] md:text-xs font-mono overflow-hidden cursor-pointer hover:ring-2 hover:ring-purple-500 transition-all group relative shadow-lg ${
+                  part.open ? 'ring-1 ring-purple-500/40' : ''
+                }`}
+                onClick={() => onCodeClick({ code: trimmedCode.trim(), lang: displayLang })}
+              >
+                <div className="text-slate-400 mb-1.5 md:mb-2 text-[9px] md:text-[10px] uppercase font-bold flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="bg-linear-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent">
+                      {displayLang}
+                    </span>
+                    {part.open && (
+                      <span className="text-[8px] md:text-[9px] text-purple-300/80 normal-case font-semibold">
+                        streaming…
+                      </span>
                     )}
-                  </pre>
-                </div>
-                {lang === 'html' && (
-                  <div className="flex items-center gap-1 text-[10px] md:text-xs text-purple-600 mt-1.5 md:mt-2 font-medium">
-                    <CheckCircle2 className="w-2.5 md:w-3 h-2.5 md:h-3" />
-                    <span>Code updated in editor</span>
                   </div>
-                )}
+                  <div className="flex items-center gap-0.5 md:gap-1 text-slate-500 group-hover:text-purple-400 transition-colors">
+                    <Maximize2 className="w-2.5 md:w-3 h-2.5 md:h-3" />
+                    <span className="text-[8px] md:text-[9px] hidden md:inline">Click to expand</span>
+                  </div>
+                </div>
+                <pre className="whitespace-pre-wrap max-h-[100px] md:max-h-[150px] overflow-hidden relative">
+                  {trimmedCode}
+                  {trimmedCode.split('\n').length > 8 && (
+                    <div className="absolute bottom-0 left-0 right-0 h-12 bg-linear-to-t from-slate-900 to-transparent"></div>
+                  )}
+                  {part.open && (
+                    <div className="absolute bottom-2 right-2 w-1.5 h-4 bg-purple-400/80 rounded-sm animate-pulse"></div>
+                  )}
+                </pre>
               </div>
-            );
-          }
+              {showUpdated && (
+                <div className="flex items-center gap-1 text-[10px] md:text-xs text-purple-600 mt-1.5 md:mt-2 font-medium">
+                  <CheckCircle2 className="w-2.5 md:w-3 h-2.5 md:h-3" />
+                  <span>Code updated in editor</span>
+                </div>
+              )}
+            </div>
+          );
         }
-        return <span key={i} className="whitespace-pre-wrap">{part}</span>;
+
+        return <span key={i} className="whitespace-pre-wrap">{part.text}</span>;
       })}
     </div>
   );

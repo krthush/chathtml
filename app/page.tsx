@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Chat from './components/Chat';
 import CodeEditor from './components/Editor';
 import Preview from './components/Preview';
+import { getString, setString, migrateLocalStorageKeyToIdb } from './lib/clientStorage';
 
 const INITIAL_CODE = `<!DOCTYPE html>
 <html lang="en">
@@ -39,6 +40,9 @@ export default function Home() {
   // Load code from localStorage or shared link on mount
   useEffect(() => {
     const loadCode = async () => {
+      // If a previous version used localStorage, migrate once to avoid quota issues.
+      await migrateLocalStorageKeyToIdb(STORAGE_KEY);
+
       // Check if there's a share ID in the URL
       const params = new URLSearchParams(window.location.search);
       const shareId = params.get('share');
@@ -63,7 +67,7 @@ export default function Home() {
 
       // Load from localStorage if no share ID or if loading failed
       setIsLoadingShare(false);
-      const savedCode = localStorage.getItem(STORAGE_KEY);
+      const savedCode = await getString(STORAGE_KEY);
       if (savedCode) {
         setCode(savedCode);
       }
@@ -76,7 +80,10 @@ export default function Home() {
   // Save code to localStorage whenever it changes
   useEffect(() => {
     if (isLoaded && !isLoadingShare) {
-      localStorage.setItem(STORAGE_KEY, code);
+      const t = window.setTimeout(() => {
+        void setString(STORAGE_KEY, code);
+      }, 400);
+      return () => window.clearTimeout(t);
     }
   }, [code, isLoaded, isLoadingShare]);
 

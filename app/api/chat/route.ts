@@ -46,7 +46,6 @@ When the user asks you to create or modify HTML:
 7. If modifying existing code, treat the editor content as the canonical single HTML page: preserve all unrelated parts and apply the requested edits to the whole document (do not output patches/diffs or partial snippets).
 
 Output rules:
-- If you include any planning section (e.g. "Plan"), it must be OUTSIDE the html code block.
 - The html code block must contain ONLY the final HTML document (no commentary inside the code block).
 
 When the user provides images:
@@ -67,14 +66,12 @@ export async function POST(req: Request) {
     currentCode,
     model,
     stream,
-    showPlan,
     maxTokens,
   }: {
     messages: ExtendedMessage[];
     currentCode: string;
     model?: string;
     stream?: boolean;
-    showPlan?: boolean;
     maxTokens?: number;
   } = await req.json();
 
@@ -89,10 +86,7 @@ export async function POST(req: Request) {
 
   const systemPrompt =
     `${buildSystemPromptBase()}\n\n` +
-    (codeContext ? `${codeContext}\n` : '') +
-    (showPlan
-      ? `When you respond, first include a short section titled "Plan" with 1-3 bullet points describing what you'll do at a high level. Do not reveal hidden chain-of-thought or detailed internal reasoning. Then provide your full answer.\n`
-      : '');
+    (codeContext ? `${codeContext}\n` : '');
 
   // Streaming (SSE) response: enables Cursor-like "Stop" and faster perceived speed.
   if (stream) {

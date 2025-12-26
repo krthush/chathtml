@@ -1,19 +1,15 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Eye, Smartphone, Monitor, X, Save, Bold, Italic, Strikethrough, List, ListOrdered, Heading1, Heading2, Heading3, Heading4, Heading5, Image, ImagePlus, Share2 } from 'lucide-react';
+import { Eye, Smartphone, Monitor, X, Save, Bold, Italic, Strikethrough, List, ListOrdered, Heading1, Heading2, Heading3, Heading4, Heading5, Quote, Code, Image, Link, Share2 } from 'lucide-react';
 
 interface PreviewProps {
   code: string;
   onChange?: (newCode: string) => void;
+  showEditingToolbar?: boolean;
 }
 
 type ViewMode = 'mobile' | 'desktop' | null;
-
-interface ContextMenuPosition {
-  x: number;
-  y: number;
-}
 
 const MAX_IMAGE_URL_LENGTH = 2048;
 
@@ -106,22 +102,23 @@ function replaceDataImageTagsWithPlaceholders(html: string, pasteId: string) {
   return { html: out, files };
 }
 
-export default function Preview({ code, onChange }: PreviewProps) {
+export default function Preview({ code, onChange, showEditingToolbar = true }: PreviewProps) {
   const [viewMode, setViewMode] = useState<ViewMode>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [pendingHtml, setPendingHtml] = useState<string | null>(null);
-  const [contextMenu, setContextMenu] = useState<ContextMenuPosition | null>(null);
   const [showImagePrompt, setShowImagePrompt] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
   const [imageError, setImageError] = useState<string | null>(null);
+  const [showLinkPrompt, setShowLinkPrompt] = useState(false);
+  const [linkUrl, setLinkUrl] = useState('');
+  const [linkText, setLinkText] = useState('');
+  const [linkError, setLinkError] = useState<string | null>(null);
   const [pasteNotice, setPasteNotice] = useState<string | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [showShareUpdateModal, setShowShareUpdateModal] = useState(false);
   const [isUpdatingShare, setIsUpdatingShare] = useState(false);
   const [existingShareId, setExistingShareId] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const contextMenuRef = useRef<HTMLDivElement>(null);
-  const imageFileInputRef = useRef<HTMLInputElement>(null);
   const pasteNoticeTimeoutRef = useRef<number | null>(null);
   const savedSelectionRangeRef = useRef<Range | null>(null);
   const iframeCleanupRef = useRef<null | (() => void)>(null);
@@ -133,6 +130,38 @@ export default function Preview({ code, onChange }: PreviewProps) {
     }
     pasteNoticeTimeoutRef.current = window.setTimeout(() => setPasteNotice(null), 4500);
   }, []);
+
+  const escapeHtmlText = (text: string) =>
+    text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+
+  const normalizeHref = (raw: string) => {
+    const trimmed = raw.trim();
+    if (!trimmed) return '';
+
+    const lower = trimmed.toLowerCase();
+    // Basic safety: don't allow javascript: URLs.
+    if (lower.startsWith('javascript:')) return '';
+
+    // Allow common schemes and relative URLs.
+    if (
+      lower.startsWith('http://') ||
+      lower.startsWith('https://') ||
+      lower.startsWith('mailto:') ||
+      lower.startsWith('tel:') ||
+      lower.startsWith('/') ||
+      lower.startsWith('#')
+    ) {
+      return trimmed;
+    }
+
+    // Default to https for bare domains.
+    return `https://${trimmed}`;
+  };
 
   const captureSelectionRange = useCallback(() => {
     const iframeDoc = iframeRef.current?.contentDocument;
@@ -300,23 +329,6 @@ export default function Preview({ code, onChange }: PreviewProps) {
         setHasUnsavedChanges(true);
       };
 
-      // Handle context menu
-      const handleContextMenu = (e: MouseEvent) => {
-        e.preventDefault();
-        
-        // Get the position relative to the viewport
-        const iframeRect = iframe.getBoundingClientRect();
-        setContextMenu({
-          x: iframeRect.left + e.clientX,
-          y: iframeRect.top + e.clientY
-        });
-      };
-
-      // Close context menu on left click
-      const handleClick = () => {
-        setContextMenu(null);
-      };
-
       // Paste: if images exist as files, paste everything else immediately, but replace image tags
       // with placeholders that get swapped with uploaded images once upload completes.
       const handlePaste = (e: ClipboardEvent) => {
@@ -367,11 +379,11 @@ export default function Preview({ code, onChange }: PreviewProps) {
                 replacePlaceholdersWithUploadedImages({ pasteId, uploaded });
                 showNotice(`Inserted ${uploaded.length === 1 ? 'image' : `${uploaded.length} images`} into the preview.`);
               } else {
-                showNotice(`No images were inserted. Try “Upload Image” (right click) or a smaller image URL.`);
+                showNotice('No images were inserted. Try “Upload Image” from the Edit menu or a smaller image URL.');
               }
             } catch (err) {
               console.error('Paste upload failed:', err);
-              showNotice('Could not upload pasted image(s). Use “Upload Image” (right click) instead.');
+              showNotice('Could not upload pasted image(s). Use “Upload Image” from the Edit menu instead.');
             } finally {
               setIsUploadingImage(false);
             }
@@ -409,11 +421,11 @@ export default function Preview({ code, onChange }: PreviewProps) {
                   replacePlaceholdersWithUploadedImages({ pasteId, uploaded });
                   showNotice(`Inserted ${uploaded.length === 1 ? 'image' : `${uploaded.length} images`} into the preview.`);
                 } else {
-                  showNotice('No images were inserted. Try “Upload Image” (right click) instead.');
+                  showNotice('No images were inserted. Try “Upload Image” from the Edit menu instead.');
                 }
               } catch (err) {
                 console.error('Data image paste upload failed:', err);
-                showNotice('Could not upload pasted image(s). Use “Upload Image” (right click) instead.');
+                showNotice('Could not upload pasted image(s). Use “Upload Image” from the Edit menu instead.');
               } finally {
                 setIsUploadingImage(false);
               }
@@ -455,11 +467,11 @@ export default function Preview({ code, onChange }: PreviewProps) {
                 insertUploadedImagesAtCursor(uploaded);
                 showNotice(`Inserted ${uploaded.length === 1 ? 'image' : `${uploaded.length} images`} into the preview.`);
               } else {
-                showNotice(`No images were inserted. Try “Upload Image” (right click) instead.`);
+                showNotice('No images were inserted. Try “Upload Image” from the Edit menu instead.');
               }
             } catch (err) {
               console.error('Drop upload failed:', err);
-              showNotice('Could not upload dropped image(s). Use “Upload Image” (right click) instead.');
+              showNotice('Could not upload dropped image(s). Use “Upload Image” from the Edit menu instead.');
             } finally {
               setIsUploadingImage(false);
             }
@@ -478,8 +490,6 @@ export default function Preview({ code, onChange }: PreviewProps) {
       };
 
       body.addEventListener('input', handleInput);
-      body.addEventListener('contextmenu', handleContextMenu);
-      body.addEventListener('click', handleClick);
       body.addEventListener('paste', handlePaste as any);
       body.addEventListener('drop', handleDrop as any);
       body.addEventListener('dragover', handleDragOver as any);
@@ -487,8 +497,6 @@ export default function Preview({ code, onChange }: PreviewProps) {
       // Cleanup
       const cleanup = () => {
         body.removeEventListener('input', handleInput);
-        body.removeEventListener('contextmenu', handleContextMenu);
-        body.removeEventListener('click', handleClick);
         body.removeEventListener('paste', handlePaste as any);
         body.removeEventListener('drop', handleDrop as any);
         body.removeEventListener('dragover', handleDragOver as any);
@@ -602,20 +610,6 @@ export default function Preview({ code, onChange }: PreviewProps) {
     }
   };
 
-  // Close context menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (contextMenuRef.current && !contextMenuRef.current.contains(event.target as Node)) {
-        setContextMenu(null);
-      }
-    };
-
-    if (contextMenu) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [contextMenu]);
-
   // Check if selection is already wrapped in a specific tag
   const isWrappedInTag = (tagName: string): Element | null => {
     if (!iframeRef.current) return null;
@@ -640,6 +634,29 @@ export default function Preview({ code, onChange }: PreviewProps) {
     }
     
     return null;
+  };
+
+  const toggleCodeBlock = () => {
+    if (!iframeRef.current) return;
+    const iframeDoc = iframeRef.current.contentDocument;
+    if (!iframeDoc) return;
+
+    const existingPre = isWrappedInTag('pre');
+    const existingCode = isWrappedInTag('code');
+    const preEl = (existingPre ||
+      (existingCode ? (existingCode.closest('pre') as Element | null) : null)) as Element | null;
+
+    if (preEl) {
+      const textNode = iframeDoc.createTextNode(preEl.textContent || '');
+      preEl.parentNode?.replaceChild(textNode, preEl);
+      iframeDoc.body.dispatchEvent(new Event('input', { bubbles: true }));
+      return;
+    }
+
+    const selection = iframeDoc.getSelection();
+    const selectedText = selection?.toString() || '';
+    const codeText = selectedText || 'code';
+    insertHtmlAtCursor(`<pre><code>${escapeHtmlText(codeText)}</code></pre>`);
   };
 
   // Format selected text or insert at cursor
@@ -720,16 +737,28 @@ export default function Preview({ code, onChange }: PreviewProps) {
         }
       }
     }
-
-    setContextMenu(null);
   };
 
   // Insert image with URL
   const insertImage = () => {
-    setContextMenu(null);
     setImageError(null);
     captureSelectionRange();
     setShowImagePrompt(true);
+  };
+
+  const insertLink = () => {
+    if (!iframeRef.current) return;
+    const iframeDoc = iframeRef.current.contentDocument;
+    if (!iframeDoc) return;
+
+    // Prefill link text from selection if available.
+    const sel = iframeDoc.getSelection();
+    const selectedText = sel?.toString() || '';
+    setLinkText(selectedText);
+    setLinkUrl('');
+    setLinkError(null);
+    captureSelectionRange();
+    setShowLinkPrompt(true);
   };
 
   const handleImageInsert = () => {
@@ -765,34 +794,24 @@ export default function Preview({ code, onChange }: PreviewProps) {
     setImageError(null);
   };
 
-  const handleUploadImageClick = () => {
-    setImageError(null);
-    captureSelectionRange();
-    imageFileInputRef.current?.click();
-  };
-
-  const handleUploadImageFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIsUploadingImage(true);
-    setImageError(null);
-    try {
-      const uploaded = await uploadImageToService(file);
-      if (uploaded.url.length > MAX_IMAGE_URL_LENGTH) {
-        setImageError(`Uploaded image URL is too long (max ${MAX_IMAGE_URL_LENGTH} characters).`);
-        return;
-      }
-      insertHtmlAtCursor(`<img src="${uploaded.url}" alt="${uploaded.name.replace(/"/g, '&quot;')}" style="max-width:100%;height:auto;" />`);
-      setShowImagePrompt(false);
-      setImageUrl('');
-      showNotice('Image uploaded and inserted into the preview.');
-    } catch (err) {
-      setImageError(err instanceof Error ? err.message : 'Failed to upload image');
-    } finally {
-      setIsUploadingImage(false);
-      // Reset input so selecting same file again works
-      if (e.target) e.target.value = '';
+  const handleLinkInsert = () => {
+    const href = normalizeHref(linkUrl);
+    if (!href) {
+      setLinkError(linkUrl.trim().toLowerCase().startsWith('javascript:') ? 'Links cannot use javascript: URLs.' : 'Please enter a valid link URL.');
+      return;
     }
+    if (href.length > MAX_IMAGE_URL_LENGTH) {
+      setLinkError(`Link URL is too long (max ${MAX_IMAGE_URL_LENGTH} characters).`);
+      return;
+    }
+
+    const text = (linkText || '').trim() || href;
+    insertHtmlAtCursor(`<a href="${escapeHtmlText(href)}">${escapeHtmlText(text)}</a>`);
+
+    setShowLinkPrompt(false);
+    setLinkUrl('');
+    setLinkText('');
+    setLinkError(null);
   };
 
   // Context menu items
@@ -807,8 +826,10 @@ export default function Preview({ code, onChange }: PreviewProps) {
     { icon: Heading3, label: 'Heading 3', action: () => applyFormatting('h3', true) },
     { icon: Heading4, label: 'Heading 4', action: () => applyFormatting('h4', true) },
     { icon: Heading5, label: 'Heading 5', action: () => applyFormatting('h5', true) },
+    { icon: Quote, label: 'Quote', action: () => applyFormatting('blockquote', true) },
+    { icon: Code, label: 'Code Block', action: toggleCodeBlock },
+    { icon: Link, label: 'Link', action: insertLink },
     { icon: Image, label: 'Insert Image', action: insertImage },
-    { icon: ImagePlus, label: 'Upload Image', action: handleUploadImageClick },
   ];
 
   return (
@@ -819,9 +840,30 @@ export default function Preview({ code, onChange }: PreviewProps) {
             <Eye className="w-4 h-4 text-white" />
           </div>
           <span className="text-sm font-semibold text-white tracking-wide">Live Preview</span>
-          <span className="text-xs bg-white/20 text-white px-2 py-0.5 rounded-full backdrop-blur-sm">
-            Editable - Try Right Clicking!
-          </span>
+          {showEditingToolbar && (
+            <div className="flex items-center gap-1 ml-2">
+              {formatOptions.map((option, index) => (
+                <button
+                  key={index}
+                  type="button"
+                  title={option.label}
+                  aria-label={option.label}
+                  onMouseDown={(e) => {
+                    // Keep focus/selection inside the iframe so formatting applies to the selected text.
+                    e.preventDefault();
+                    captureSelectionRange();
+                  }}
+                  onClick={() => {
+                    restoreSelectionRange();
+                    option.action();
+                  }}
+                  className="p-1.5 bg-white/20 hover:bg-white/30 rounded-lg transition-all backdrop-blur-sm"
+                >
+                  <option.icon className="w-4 h-4 text-white" />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {hasUnsavedChanges && (
@@ -875,29 +917,6 @@ export default function Preview({ code, onChange }: PreviewProps) {
         />
       </div>
 
-      {/* Context Menu */}
-      {contextMenu && (
-        <div
-          ref={contextMenuRef}
-          className="fixed bg-white rounded-lg shadow-2xl border border-slate-200 py-1 z-50 min-w-[180px]"
-          style={{ 
-            left: `${contextMenu.x}px`, 
-            top: `${contextMenu.y}px`,
-          }}
-        >
-          {formatOptions.map((option, index) => (
-            <button
-              key={index}
-              onClick={option.action}
-              className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 flex items-center gap-3 transition-colors"
-            >
-              <option.icon className="w-4 h-4 text-slate-500" />
-              <span>{option.label}</span>
-            </button>
-          ))}
-        </div>
-      )}
-
       {/* Image URL Prompt */}
       {showImagePrompt && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => { setShowImagePrompt(false); setImageUrl(''); }}>
@@ -938,28 +957,12 @@ export default function Preview({ code, onChange }: PreviewProps) {
                 {imageError}
               </div>
             )}
-            <input
-              ref={imageFileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleUploadImageFile}
-              className="hidden"
-            />
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => { setShowImagePrompt(false); setImageUrl(''); }}
                 className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
               >
                 Cancel
-              </button>
-              <button
-                onClick={handleUploadImageClick}
-                disabled={isUploadingImage}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                title="Upload an image and insert it"
-              >
-                <ImagePlus className="w-4 h-4" />
-                {isUploadingImage ? 'Uploading…' : 'Upload'}
               </button>
               <button
                 onClick={handleImageInsert}
@@ -969,8 +972,76 @@ export default function Preview({ code, onChange }: PreviewProps) {
               </button>
             </div>
             <p className="text-xs text-slate-500 mt-3">
-              Tip: You can also right click inside the preview and choose “Upload Image”.
+              Tip: You can also paste or drag/drop images into the preview to upload them automatically.
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* Link Prompt */}
+      {showLinkPrompt && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={() => { setShowLinkPrompt(false); setLinkUrl(''); setLinkText(''); setLinkError(null); }}
+        >
+          <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-slate-900">Insert Link</h3>
+              <button
+                onClick={() => { setShowLinkPrompt(false); setLinkUrl(''); setLinkText(''); setLinkError(null); }}
+                className="p-1 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">URL</label>
+                <input
+                  type="text"
+                  value={linkUrl}
+                  onChange={(e) => setLinkUrl(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleLinkInsert();
+                  }}
+                  placeholder="https://example.com"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-rose-500"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Text (optional)</label>
+                <input
+                  type="text"
+                  value={linkText}
+                  onChange={(e) => setLinkText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleLinkInsert();
+                  }}
+                  placeholder="Link text"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-rose-500"
+                />
+              </div>
+              {linkError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {linkError}
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end gap-2 mt-5">
+              <button
+                onClick={() => { setShowLinkPrompt(false); setLinkUrl(''); setLinkText(''); setLinkError(null); }}
+                className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleLinkInsert}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition-colors text-sm font-medium"
+              >
+                Insert
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -124,7 +124,7 @@ export default function Home() {
 
       {/* Mobile: Bottom Panel / Desktop: Right Panel - Preview */}
       <div className="flex-1 h-full w-full md:flex-1">
-        <Preview code={code} onChange={setCode} />
+        <Preview code={code} onChange={setCode} showEditingToolbar={!isEditorExpanded} />
       </div>
     </main>
   );

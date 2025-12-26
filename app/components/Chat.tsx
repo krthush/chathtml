@@ -37,7 +37,6 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
   const [messages, setMessages] = useState<ExtendedMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasAssistantStarted, setHasAssistantStarted] = useState(false);
-  const [showThinkingSteps, setShowThinkingSteps] = useState(false);
   const [streamState, setStreamState] = useState<'thinking' | 'streaming' | null>(null);
   const [modalCode, setModalCode] = useState<{ code: string; lang: string } | null>(null);
   const [uploadedImages, setUploadedImages] = useState<ImageAttachment[]>([]);
@@ -50,6 +49,7 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
   const [showModelDropdown, setShowModelDropdown] = useState(false);
   const [messagesWithCode, setMessagesWithCode] = useState<Set<number>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const lastProcessedIndex = useRef<number>(-1);
   const currentCodeRef = useRef<string>(currentCode);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -120,6 +120,23 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
 
   useEffect(() => {
     scrollToBottom();
+  }, [messages]);
+
+  // While a fenced code block is still streaming (unclosed ```), keep its <pre> scrolled to the bottom
+  // so the latest lines are visible (otherwise you only see the top of the block).
+  useEffect(() => {
+    const root = messagesContainerRef.current;
+    if (!root) return;
+
+    const raf = requestAnimationFrame(() => {
+      const streamingPres = root.querySelectorAll<HTMLPreElement>('pre[data-chathtml-streaming="true"]');
+      streamingPres.forEach((pre) => {
+        // Force-pin to bottom while streaming.
+        pre.scrollTop = pre.scrollHeight;
+      });
+    });
+
+    return () => cancelAnimationFrame(raf);
   }, [messages]);
 
   const handleStop = useCallback(() => {
@@ -513,7 +530,6 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
           currentCode: currentCodeRef.current,
           model: selectedModel,
           stream: true,
-          showPlan: showThinkingSteps,
           maxTokens: 100000,
         }),
         signal: abortController.signal,
@@ -697,18 +713,6 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
             )}
           </div>
           
-          {/* Thinking / Plan Toggle */}
-          <button
-            onClick={() => setShowThinkingSteps(v => !v)}
-            className={`p-1.5 rounded-lg transition-all backdrop-blur-sm flex items-center gap-1.5 ${
-              showThinkingSteps ? 'bg-white/30 hover:bg-white/40' : 'bg-white/20 hover:bg-white/30'
-            }`}
-            title={showThinkingSteps ? 'Thinking steps: ON (shows a short Plan section)' : 'Thinking steps: OFF'}
-          >
-            <CheckCircle2 className="w-3 md:w-4 h-3 md:h-4 text-white" />
-            <span className="hidden md:inline text-xs text-white/90">Plan</span>
-          </button>
-
           {/* Templates Button */}
           <div className="relative" ref={templateDropdownRef}>
             <button
@@ -800,7 +804,7 @@ export default function Chat({ onCodeUpdate, currentCode }: ChatProps) {
       </div>
 
       {/* Messages Container */}
-      <div className="flex-1 overflow-y-auto relative z-0">
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto relative z-0">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center p-4 md:p-8">
             <div className="relative">
@@ -1234,9 +1238,14 @@ function MessageContent({
                     <span className="text-[8px] md:text-[9px] hidden md:inline">Click to expand</span>
                   </div>
                 </div>
-                <pre className="whitespace-pre-wrap max-h-[100px] md:max-h-[150px] overflow-hidden relative">
+                <pre
+                  data-chathtml-streaming={part.open ? 'true' : undefined}
+                  className={`whitespace-pre-wrap max-h-[140px] md:max-h-[200px] overflow-auto relative ${
+                    part.open ? 'scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent' : ''
+                  }`}
+                >
                   {trimmedCode}
-                  {trimmedCode.split('\n').length > 8 && (
+                  {!part.open && trimmedCode.split('\n').length > 8 && (
                     <div className="absolute bottom-0 left-0 right-0 h-12 bg-linear-to-t from-slate-900 to-transparent"></div>
                   )}
                   {part.open && (

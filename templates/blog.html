@@ -1,30 +1,21 @@
 <!DOCTYPE html>
-<html
-  data-wf-page="645e7d8eb25114000b8606ea"
-  data-wf-site="645e7d8eb25114000b86068b"
-  data-wf-status="1"
->
+<html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>
-      How to Build a Successful Influencer Marketing Career | Faved Blog
-    </title>
+    <title>Example Blog Post Title | Faved Blog</title>
     <meta
-      content="Learn how to build a successful influencer marketing career. Discover key skills, strategies, networking tips, and how platforms like Faved can help you succeed."
+      content="This is an example blog post description used for testing and templating."
       name="description"
     />
     <meta name="robots" content="index, follow" />
     <meta name="author" content="Faved" />
     <meta
       name="keywords"
-      content="influencer marketing career, influencer marketing, brand sponsorships, creator partnerships, social media marketing, influencer strategy"
+      content="example, sample, placeholder, blog, template, test page"
     />
+    <meta content="Example Blog Post Title | Faved Blog" property="og:title" />
     <meta
-      content="How to Build a Successful Influencer Marketing Career | Faved Blog"
-      property="og:title"
-    />
-    <meta
-      content="Learn how to build a successful influencer marketing career. Discover key skills, strategies, networking tips, and how platforms like Faved can help you succeed."
+      content="This is an example blog post description used for testing and templating."
       property="og:description"
     />
     <meta content="https://www.faved.com/logo-name.png" property="og:image" />
@@ -32,11 +23,11 @@
     <meta property="og:locale" content="en_US" />
     <meta property="og:url" content="https://www.faved.com/blog/example" />
     <meta
-      content="How to Build a Successful Influencer Marketing Career | Faved Blog"
+      content="Example Blog Post Title | Faved Blog"
       property="twitter:title"
     />
     <meta
-      content="Learn how to build a successful influencer marketing career. Discover key skills, strategies, networking tips, and how platforms like Faved can help you succeed."
+      content="This is an example blog post description used for testing and templating."
       property="twitter:description"
     />
     <meta
@@ -46,62 +37,68 @@
     <meta property="og:type" content="article" />
     <meta content="summary_large_image" name="twitter:card" />
     <meta content="width=device-width, initial-scale=1" name="viewport" />
-    <meta content="Webflow" name="generator" />
     <link rel="canonical" href="https://www.faved.com/blog/example" />
     <meta name="twitter:site" content="@faved" />
     <meta name="twitter:creator" content="@faved" />
-    <link
-      href="https://faved.com/css/normalize.css"
-      rel="stylesheet"
-      type="text/css"
-    />
-    <link
-      href="https://faved.com/css/webflow.css"
-      rel="stylesheet"
-      type="text/css"
-    />
-    <link
-      href="https://faved.com/css/faved.webflow.css"
-      rel="stylesheet"
-      type="text/css"
-    />
+
+    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com" rel="preconnect" />
     <link
       href="https://fonts.gstatic.com"
       rel="preconnect"
       crossorigin="anonymous"
     />
-    <!-- Google Fonts -->
-    <script
-      src="https://ajax.googleapis.com/ajax/libs/webfont/1.6.26/webfont.js"
-      type="text/javascript"
-    ></script>
-    <script type="text/javascript">
-      WebFont.load({
-        google: {
-          families: [
-            "Inter:100,200,300,regular,500,600,700,800,900",
-            "Caveat:regular,500,600,700",
-          ],
-        },
-      });
-    </script>
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&family=Caveat:wght@400;500;600;700&display=swap"
+    />
+
+    <!-- Favicon -->
     <link
       href="https://faved.com/images/favicon.png"
       rel="shortcut icon"
       type="image/x-icon"
     />
     <link href="https://faved.com/images/webclip.png" rel="apple-touch-icon" />
+
+    <!-- Tailwind CSS with Typography Plugin -->
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              "gold-100": "#ffe57b",
+              "gold-200": "#fcb150",
+            },
+            fontFamily: {
+              sans: [
+                "Inter",
+                "system-ui",
+                "-apple-system",
+                "Segoe UI",
+                "Roboto",
+                "Helvetica",
+                "Arial",
+                "sans-serif",
+              ],
+              caveat: ["Caveat", "cursive"],
+            },
+          },
+        },
+      };
+    </script>
+
     <style>
-      .body-content {
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
       }
     </style>
-    <!-- DEV ONLY -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!--  -->
-    <link href="https://faved.com/css/output.css" rel="stylesheet" />
+
     <!-- Instantly Website Visitors Pixel -->
     <script
       id="vtag-ai-js"
@@ -110,6 +107,7 @@
       data-pid="1dLj5ZGpPBdpjBQe9"
       data-version="062024"
     ></script>
+
     <!-- PostHog -->
     <script>
       !(function (t, e) {
@@ -162,425 +160,129 @@
       })(document, window.posthog || []);
       posthog.init("phc_tHOy79VGp64Jj6jKMFlXHVHY5V1e7qXlGrFKZoRZRec", {
         api_host: "https://us.i.posthog.com",
-        person_profiles: "identified_only", // or 'always' to create profiles for anonymous users as well
-        disable_session_recording: true, // disable session recording
+        person_profiles: "identified_only",
+        disable_session_recording: true,
       });
     </script>
-    <!-- Rankai (Help with SEO) -->
-    <script
-      src="https://rankai.ai/apply.js"
-      data-rankai-id="cm3q5vts10002pk6e9iumr3ry"
-      crossorigin="anonymous"
-      defer
-    ></script>
-    <style>
-      h1 {
-        font-size: 2.25rem !important;
-        font-weight: 700 !important;
-        line-height: 1.25 !important;
-        margin-top: 1.5rem !important;
-        margin-bottom: 1rem !important;
-      }
-      h2 {
-        font-size: 1.875rem !important;
-        font-weight: 700 !important;
-        line-height: 1.25 !important;
-        margin-top: 1.5rem !important;
-        margin-bottom: 1rem !important;
-      }
-      p {
-        margin-top: 1rem !important;
-        margin-bottom: 1rem !important;
-      }
-    </style>
   </head>
-  <body>
-    <div class="body-content">
+
+  <body class="font-sans text-gray-900">
+    <div>
       <!-- Navigation -->
-      <div class="sticky-navigation">
-        <div
-          data-collapse="medium"
-          data-animation="default"
-          data-duration="400"
-          data-w-id="a7227726-9e93-70e7-5da2-4838ae48e771"
-          data-easing="ease"
-          data-easing2="ease"
+      <header class="sticky top-0 z-50 bg-white">
+        <nav
           role="banner"
-          class="navigation w-nav"
+          class="min-h-20 flex justify-center items-center px-4"
         >
-          <div class="webflow-container flex _2 w-container">
-            <div class="first-part">
-              <a href="http://faved.com/" class="brand _2 w-nav-brand"
-                ><img
+          <div
+            class="max-w-7xl flex-1 mx-auto relative flex justify-between items-center"
+          >
+            <!-- Logo -->
+            <div class="flex items-center">
+              <a href="https://faved.com/" class="flex items-center mr-2.5">
+                <img
                   src="https://faved.com/images/icon.svg"
                   width="32"
                   height="32"
                   alt="Faved Logo"
-                  class="madox-logo mobile-logo margin-horizontal-10px"
+                  class="mx-2.5"
                 />
-                <h2 class="w-h2 no-margins dark-orange-text">Faved</h2>
+                <span class="text-3xl font-bold text-gold-200">Faved</span>
               </a>
             </div>
-            <div class="second-part">
-              <nav role="navigation" class="nav-menu w-nav-menu">
-                <a
-                  href="/creators"
-                  class="nav-link w-nav-link"
-                  style="width: 150px; text-align: center"
-                  >I&#x27;m A Creator</a
-                >
-                <a
-                  href="/app/youtube?mode=brands"
-                  class="nav-link w-nav-link button black w-button"
-                  style="width: 150px; text-align: center"
-                  >Log In</a
-                >
-                <div class="button-divider"></div>
-              </nav>
-              <div id="m-nav-button" class="menu-button w-nav-button">
-                <div class="line-1"></div>
-                <div class="line-3"></div>
-                <div class="line-2"></div>
-              </div>
-            </div>
-          </div>
-          <div
-            id="m-nav-container"
-            class="w-nav-overlay"
-            style="display: none"
-          ></div>
-        </div>
-      </div>
 
-      <div
-        class="hero _7"
-        style="
-          background: linear-gradient(
-            to bottom right,
-            #fcb150 0%,
-            #ffe57b 50%,
-            #ffffff 100%
-          );
-        "
-      >
-        <div>
-          <div class="hero-max _4">
-            <div
-              data-w-id="368c0294-da06-3af5-6fb6-29c73ed4b4e3"
-              class="button-flex _2 center"
-            >
-              <div style="color: #4b5563">November 22, 2024</div>
+            <!-- Desktop Nav -->
+            <div class="hidden md:flex items-center justify-end">
+              <a
+                href="/creators"
+                class="w-32 text-center text-black text-base leading-tight font-bold pr-5 transition-opacity duration-200 hover:text-gray-500 hover:underline"
+                >I'm A Creator</a
+              >
+              <a
+                href="/app/youtube?mode=brands"
+                class="w-32 text-center text-white bg-black py-2 px-8 text-base font-bold no-underline transition-all duration-300 hover:text-black hover:bg-gray-100 rounded-xl"
+                >Log In</a
+              >
+              <div class="w-5"></div>
             </div>
-            <h1>How to Build a Successful Influencer Marketing Career</h1>
+
+            <!-- Mobile Menu Button -->
+            <button
+              id="m-nav-button"
+              class="md:hidden w-6 h-12 flex flex-col justify-center items-center p-0 relative"
+              aria-label="Toggle mobile menu"
+            >
+              <span
+                class="w-6 h-0.5 bg-gray-900 rounded-sm absolute top-4"
+              ></span>
+              <span
+                class="w-6 h-0.5 bg-gray-900 rounded-sm absolute top-5"
+              ></span>
+              <span
+                class="w-6 h-0.5 bg-gray-900 rounded-sm absolute top-6"
+              ></span>
+            </button>
+          </div>
+        </nav>
+
+        <!-- Mobile Menu Overlay -->
+        <div
+          id="m-nav-container"
+          class="hidden md:hidden bg-white border-t border-gray-100 px-4 py-4"
+        >
+          <div class="flex flex-col items-center gap-4">
+            <a
+              href="/creators"
+              class="w-32 text-center text-black text-base py-3 font-bold transition-opacity duration-200 hover:text-gray-500 hover:underline"
+              >I'm A Creator</a
+            >
+            <a
+              href="/app/youtube?mode=brands"
+              class="w-32 text-center text-white bg-black py-2 px-8 text-base font-bold no-underline transition-all duration-300 hover:text-black hover:bg-gray-100 rounded-xl"
+              >Log In</a
+            >
           </div>
         </div>
-      </div>
-      <div class="section">
-        <div class="container" style="margin-left: auto; margin-right: auto">
-          <div class="blog-body">
-            <div class="w-richtext">
-              <p>
-                <img
-                  src="https://blog.qollabb.com/wp-content/uploads/2024/11/Professional-Job-Hiring-Instagram-Post-1080-x-1080-px-Website37-1024x576.png"
-                  alt="Blog Image"
-                />
-              </p>
-              <h1>Building an Influencer Marketing Career</h1>
-              <p>
-                In today's digital age, pursuing an influencer marketing career
-                offers exciting possibilities for those who blend creativity
-                with business acumen. As brands increasingly recognize the
-                effectiveness of social media influencers in reaching target
-                audiences, the demand for skilled professionals in this field
-                continues to grow. This guide serves as your essential resource
-                for launching a successful influencer marketing career by
-                outlining key skills and strategies necessary for excellence.
-              </p>
-              <p>
-                This article will explore various career paths in influencer
-                marketing, highlight crucial skills for success, and provide
-                tips for crafting effective marketing strategies. Furthermore,
-                we will emphasize the significance of networking and leveraging
-                influencer marketing platforms to enhance your influence. By the
-                end of this guide, you will have the knowledge and tools needed
-                to embark on your influencer marketing journey, setting the
-                foundation for a fulfilling career that aligns with your
-                personal goals while delivering value to brands.
-              </p>
-              <h2>Exploring Career Opportunities in Influencer Marketing</h2>
-              <p>
-                The influencer marketing industry is rapidly expanding,
-                projected to exceed $15 billion by 2022. This growth creates
-                numerous career paths for individuals looking to excel in this
-                dynamic sector. As brands increasingly utilize social media for
-                their marketing efforts, the demand for experts who can connect
-                brands with influencers grows.
-              </p>
-              <p>
-                Key roles in influencer marketing include Influencer Manager,
-                Social Media Specialist, Content Strategist, and Campaign
-                Coordinator. Influencer Managers focus on building relationships
-                and collaborations with influencers, while Social Media
-                Specialists create engaging content and execute strategies to
-                enhance brand visibility on social platforms. Meanwhile, Content
-                Strategists curate content tailored to target audiences, and
-                Campaign Coordinators ensure that marketing efforts align with
-                the brand's objectives.
-              </p>
-              <p>
-                Aspiring professionals should consider starting their influencer
-                marketing career with entry-level positions such as social media
-                coordinator or marketing assistant. These roles provide
-                invaluable experience and insight into digital marketing and
-                social dynamics, forming a solid foundation for more advanced
-                roles. Notably, over 70% of successful professionals in this
-                field began with entry-level marketing jobs, underscoring the
-                importance of practical experience.
-              </p>
-              <p>
-                Internships and freelance projects are excellent opportunities
-                for those looking to advance their influencer marketing career.
-                Engaging with real clients or established influencers not only
-                provides hands-on experience but also fosters vital networking
-                connections in this competitive industry. Additionally, staying
-                updated with social media trends is imperative; data shows that
-                83% of users discover new products on platforms like Instagram,
-                highlighting the significance of effective influencer
-                partnerships.
-              </p>
-              <p>
-                In conclusion, pursuing a successful influencer marketing career
-                involves understanding the industry landscape, recognizing key
-                roles, and leveraging entry-level experiences. With a strong
-                foundation, individuals can thrive and adapt in this
-                ever-evolving field. To further excel, aspiring marketers must
-                also develop essential skills suited to the fast-paced nature of
-                influencer marketing.
-              </p>
-              <h2>
-                Essential Skills for a Successful Influencer Marketing Career
-              </h2>
-              <p>
-                To thrive in an influencer marketing career, professionals must
-                cultivate a mix of essential skills. Effective communication is
-                crucial for building productive relationships with brands,
-                influencers, and audiences. When professionals can articulate
-                their vision clearly and connect on a personal level, they
-                foster greater engagement and alignment on campaign goals.
-              </p>
-              <p>
-                Time management and organizational skills are also paramount.
-                Influencer marketing professionals often juggle multiple
-                campaigns and deadlines, making it vital to prioritize tasks
-                effectively. Maintaining organization is necessary for executing
-                campaigns smoothly and keeping everything on schedule.
-              </p>
-              <p>
-                Analytical skills play an equally important role in assessing
-                campaign performance. With a significant number of marketers
-                reporting challenges in measuring effectiveness, the ability to
-                interpret data becomes critical. Professionals in influencer
-                marketing must analyze key metrics such as engagement rates and
-                return on investment, allowing them to adjust strategies based
-                on data insights.
-              </p>
-              <p>
-                Additionally, understanding community management can
-                significantly enhance an influencer marketing career. A loyal
-                and trusting audience is more receptive to promotions. By
-                engaging authentically with followers, influencers can
-                strengthen these relationships, leading to improved conversion
-                rates.
-              </p>
-              <p>
-                By honing these skills, aspiring professionals can position
-                themselves for success in the influencer marketing field. As the
-                industry evolves, a commitment to ongoing learning and
-                adaptability is essential for a sustainable career. In the
-                following section, we will explore how to craft a winning
-                influencer marketing strategy that meets both brand objectives
-                and audience desires.
-              </p>
-              <h2
-                data-id="9504a6ce-2576-45b7-bb6a-a19baf27b40c"
-                id="9504a6ce-2576-45b7-bb6a-a19baf27b40c"
-                data-toc-id="9504a6ce-2576-45b7-bb6a-a19baf27b40c"
-              >
-                Creating a Winning Influencer Marketing Strategy
-              </h2>
-              <p>
-                A strong strategy is foundational for a successful influencer
-                marketing career. By aligning your efforts with brand goals and
-                market trends, you can achieve significant results. Start by
-                identifying clear objectives and understanding your target
-                audience. Brands with well-defined goals for their influencer
-                campaigns often see improved engagement and returns.
-              </p>
-              <p>
-                For instance, if a brand aims to increase awareness, it's
-                effective to partner with influencers who boast a broad
-                audience. Alternatively, for driving conversions,
-                micro-influencers with niche followings can be more impactful.
-                Knowing your audience not only helps in selecting the right
-                influencers but also in creating content that resonates with
-                them.
-              </p>
-              <p>
-                Alignment between influencer partnerships and brand values is
-                crucial. When influencers genuinely endorse a brand they trust,
-                their recommendations carry more influence, fostering trust with
-                their audience. Brands that select influencers reflecting their
-                core values can strengthen connections, enhancing loyalty and
-                driving sales.
-              </p>
-              <p>
-                Successful brands demonstrate that a clear influencer marketing
-                strategy, encompassing campaign goals and influencer selection,
-                delivers significant returns on investment. A well-structured
-                plan should include tactics for content generation, targeted
-                social media platforms, and metrics for success. This roadmap
-                serves both current needs and future initiatives.
-              </p>
-              <p>
-                In summary, a robust influencer marketing strategy is essential
-                for those pursuing a rewarding influencer marketing career. By
-                establishing clear objectives, understanding your target
-                audience, and ensuring alignment with influencer values, you can
-                create impactful marketing initiatives.
-              </p>
-              <p>
-                As you develop your strategy, prioritize networking and building
-                relationships in the influencer marketing space. These
-                connections are vital for effective collaboration, allowing you
-                to enhance your influence and expand your reach.
-              </p>
-              <h2>
-                Networking and Building Relationships in Influencer Marketing
-              </h2>
-              <p>
-                In influencer marketing, building relationships is essential.
-                Success in your influencer marketing career hinges on strong
-                connections with both influencers and brands. Establishing and
-                nurturing these relationships fosters trust and collaboration,
-                which are crucial for long-term success. Research indicates that
-                84% of marketers prefer partnerships with established
-                influencers due to their loyal audiences and authentic content.
-                Consequently, a robust network can lead to ongoing collaboration
-                and growth opportunities.
-              </p>
-              <p>
-                Personalization plays a significant role in connecting with
-                influencers and brands. Begin by actively engaging with their
-                content on social media—like, comment, and share to increase
-                your visibility. When you reach out, ensure your messages are
-                genuine and highlight your interest in their work. Avoid generic
-                pitches; instead, focus on how a partnership would benefit both
-                parties. Personalized outreach enhances response rates, which is
-                vital for forming valuable connections.
-              </p>
-              <p>
-                Nurturing these relationships requires consistent effort.
-                Regularly check in with your contacts, offer assistance when
-                possible, and share relevant resources that can benefit them. By
-                providing value, you solidify your role as a supportive
-                collaborator and remain top-of-mind for future opportunities.
-                Experts suggest that maintaining contact with influencers
-                increases the chances of securing long-term partnerships,
-                reinforcing the importance of relationship management in a
-                successful influencer marketing career.
-              </p>
-              <p>
-                As we transition to the next section, remember that a successful
-                influencer marketing career is built on effective networking and
-                relationship management. Your ability to connect and maintain
-                partnerships will serve as a foundation as you explore how to
-                successfully launch your career in influencer marketing.
-              </p>
-              <h2>Tips for Launching an Influencer Marketing Career</h2>
-              <p>
-                Launching a successful influencer marketing career requires a
-                strategic approach. Start by choosing a niche that resonates
-                with your interests, such as fashion, technology, or travel.
-                Specializing allows you to create targeted content that attracts
-                and retains a loyal audience.
-              </p>
-              <p>
-                Next, build a strong presence on social media. Optimize your
-                profiles with eye-catching visuals and maintain a consistent
-                posting schedule. Engagement is crucial; respond to comments and
-                produce interactive content to encourage audience participation.
-              </p>
-              <p>
-                Networking with brands is another essential step. Authentic
-                reviews and collaborations can boost your credibility and expand
-                your exposure, opening doors to new opportunities. To keep your
-                strategies effective, stay updated on industry trends and
-                platform changes. The influencer marketing landscape evolves
-                rapidly, so being aware of new trends, algorithms, and content
-                formats helps you remain relevant.
-              </p>
-              <p>
-                Finally, take advantage of new features, such as Instagram Reels
-                or TikTok trends, to enhance your reach. By focusing on your
-                niche, engaging with your audience, and connecting with brands,
-                you can successfully build an influencer marketing career.
-                Utilize platforms like Faved to streamline your efforts and
-                maximize impact.
-              </p>
-              <h2>Using Influencer Marketing Platforms like Faved</h2>
-              <p>
-                Influencer marketing is essential for brands aiming to connect
-                authentically with their audiences. Platforms like Faved
-                simplify this process by helping brands find the right
-                influencers for their campaigns, making it easier to forge
-                valuable partnerships.
-              </p>
-              <p>
-                A key advantage of Faved is its ability to manage contracts and
-                payments seamlessly. By automating these administrative tasks,
-                the platform promotes transparency and efficiency. This lets
-                marketers concentrate on strategy rather than logistics,
-                speeding up transactions and enhancing the overall collaboration
-                experience.
-              </p>
-              <p>
-                Moreover, Faved significantly improves return on investment
-                (ROI) through structured partnerships. With well-defined goals,
-                brands can effectively monitor performance metrics. The
-                platform's analytical tools enable marketers to evaluate their
-                campaigns, facilitating ongoing optimization. Research indicates
-                that such structured partnerships lead to enhanced ROI,
-                empowering brands to scale their influencer marketing efforts.
-              </p>
-              <p>
-                In conclusion, leveraging influencer marketing platforms like
-                Faved is crucial for anyone pursuing an influencer marketing
-                career. These platforms not only streamline collaborations and
-                expedite contracts and payments but also provide valuable
-                insights through analytics. This enables marketers to build
-                strong relationships with influencers and achieve superior
-                campaign results.
-              </p>
-              <h2>Conclusion</h2>
-              <p>
-                Building a successful influencer marketing career begins with
-                skill development, strategic networking, and effective tactics.
-                In this field, key skills such as communication, creativity, and
-                data analysis are essential for setting yourself apart. To
-                develop a successful strategy, understand your audience and
-                leverage platforms like Faved to broaden your reach.
-              </p>
-              <p>
-                With this foundation, it's time to take action. Start by
-                identifying your niche and enhancing your skills. Build your
-                professional network to facilitate collaborations with brands
-                and fellow influencers. Remember, every successful influencer
-                started from a similar place. With commitment and the right
-                strategies, you can flourish in your influencer marketing
-                career. Stay engaged with industry trends, express your
-                creativity, and carve out your unique position in this dynamic
-                field.
-              </p>
+      </header>
+
+      <!-- Hero Section -->
+      <section class="bg-gold-100 py-16 px-6 flex justify-center">
+        <div class="max-w-3xl mx-auto text-center">
+          <div class="flex items-center justify-center mb-4">
+            <span class="text-sm font-bold text-black">
+              January 1st, 2026
+            </span>
+          </div>
+          <h1
+            class="text-3xl sm:text-4xl font-bold leading-tight tracking-tight text-black mb-5"
+          >
+            Example Blog Post Title
+          </h1>
+          <span
+            class="inline-flex items-center rounded-full bg-black px-3 py-1 text-xs font-semibold tracking-wide text-white"
+          >
+            Guest Post by Faved
+          </span>
+        </div>
+      </section>
+
+      <!-- Main Content -->
+      <section class="py-24 px-6">
+        <div class="max-w-5xl mx-auto">
+          <div class="w-full lg:w-2/3 mx-auto">
+            <!-- Article Content with Tailwind Typography -->
+            <article
+              class="prose prose-slate prose-lg max-w-none prose-headings:font-sans prose-headings:tracking-tight prose-headings:text-slate-900 prose-h1:text-3xl prose-h1:mt-5 prose-h1:mb-4 prose-h2:text-2xl prose-h2:mt-7 prose-h2:mb-4 prose-h3:text-xl prose-h3:mt-5 prose-h3:mb-2 prose-h3:font-bold prose-h4:text-base prose-h4:mt-4 prose-h4:mb-1.5 prose-h4:font-bold prose-h4:text-gray-700 prose-p:mb-3.5 prose-p:text-left prose-a:text-blue-600 prose-a:underline prose-a:underline-offset-2 prose-ul:my-3 prose-ul:pl-5 prose-ul:list-disc prose-ol:my-3 prose-ol:pl-5 prose-ol:list-decimal prose-li:my-2.5 prose-li:pl-0.5 prose-img:rounded-xl prose-img:border prose-img:border-slate-900/10 prose-img:shadow-lg prose-figure:my-4"
+              aria-label="Blog article content"
+            >
+              <!-- Article content placeholder -->
+              <p>BLOG CONTENT GOES HERE.</p>
+            </article>
+
+            <!-- About Faved Section -->
+            <div
+              class="prose prose-slate prose-lg max-w-none mt-8 prose-h2:text-2xl prose-h2:mt-7 prose-h2:mb-4 prose-h2:font-bold prose-p:mb-3.5 prose-p:text-left prose-a:text-blue-600 prose-a:underline prose-a:underline-offset-2"
+            >
               <h2>About Faved</h2>
               <p>
                 Faved allows you to book influencers directly on the platform.
@@ -591,108 +293,134 @@
                 <a
                   target="_blank"
                   rel="noopener noreferrer nofollow"
-                  class="link"
                   href="https://faved.com/onboarding/brands"
                 >
-                  If you find it hard to search perfect influencers or get in
-                  touch with them, sign up!</a
-                >
+                  If you find it hard to search for the perfect influencers or
+                  get in touch with them, sign up here!
+                </a>
               </p>
             </div>
-            <div class="margin-20px">
-              <a href="/blog" class="button black w-button">Back to Blog</a>
+
+            <!-- Back to Blog Button -->
+            <div class="mt-5">
+              <a
+                href="/blog"
+                class="inline-block text-white bg-black py-2 px-8 text-base font-bold no-underline transition-all duration-300 hover:text-black hover:bg-gray-100 rounded-xl"
+                >Back to Blog</a
+              >
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
       <!-- Footer Section -->
-      <footer class="footer wf-section">
-        <div class="webflow-container _1000px">
-          <div class="footer-gird">
-            <div class="footer-column _1">
-              <a href="#" class="footer-logo w-inline-block">
-                <h2 class="w-h2 no-margins white-text">Faved</h2>
+      <footer class="bg-black pt-16 pb-8">
+        <div class="max-w-screen-xl mx-auto px-6">
+          <div
+            class="grid gap-x-12 gap-y-8 grid-cols-1 md:grid-cols-2 lg:grid-cols-[2fr_1.5fr_1.5fr_1.5fr]"
+          >
+            <!-- Column 1: Brand -->
+            <div class="pr-0">
+              <a href="#" class="inline-block h-8">
+                <span class="text-3xl font-bold text-white">Faved</span>
               </a>
-              <div class="margin-25px">
-                <p class="paragraph-white">Sponsorships made simple.</p>
+              <div class="mt-6">
+                <p class="text-white text-base font-bold">
+                  Sponsorships made simple.
+                </p>
               </div>
-              <div class="margin-30px">
-                <a href="/onboarding/brands" class="button orange w-button"
+              <div class="mt-8">
+                <a
+                  href="/onboarding/brands"
+                  class="inline-block w-32 text-center bg-gold-200 text-black py-2 px-8 text-base font-bold no-underline transition-all duration-300 hover:text-white hover:bg-black rounded-xl"
                   >Sign Up</a
                 >
               </div>
             </div>
-            <div class="footer-column">
-              <div class="small-title">Useful links</div>
-              <div class="margin-25px">
+
+            <!-- Column 2: Useful Links -->
+            <div>
+              <div class="text-gold-200 mb-5 text-base font-bold leading-7">
+                Useful links
+              </div>
+              <div class="mt-6 flex flex-col gap-2.5">
                 <a
                   href="https://faved.notion.site/Faved-Terms-Of-Service-23e050ec6f23411b864c2c3a43818378"
-                  class="footer-link"
+                  class="text-white/70 text-base font-bold no-underline block hover:text-white transition-colors"
                   >Terms Of Service</a
                 >
-                <a href="https://faved.com/privacy" class="footer-link"
+                <a
+                  href="https://faved.com/privacy"
+                  class="text-white/70 text-base font-bold no-underline block hover:text-white transition-colors"
                   >Privacy Policy</a
                 >
                 <a
                   href="https://faved.notion.site/Faved-Influencer-Data-Sources-f78af4f93288406bb645f25b530275d2"
-                  class="footer-link"
+                  class="text-white/70 text-base font-bold no-underline block hover:text-white transition-colors"
                   >Data Sources</a
                 >
               </div>
             </div>
-            <div class="footer-column">
-              <div class="small-title">Contact Us</div>
-              <div class="margin-25px">
-                <p class="paragraph-white">
-                  Faved Ltd. <br />227 Shepherds Bush Road, London,<br />United
-                  Kingdom<br />W6 7AS<br />
+
+            <!-- Column 3: Contact -->
+            <div>
+              <div class="text-gold-200 mb-5 text-base font-bold leading-7">
+                Contact Us
+              </div>
+              <div class="mt-6">
+                <p class="text-white text-base font-bold">
+                  Faved Ltd.<br />
+                  227 Shepherds Bush Road, London,<br />
+                  United Kingdom<br />
+                  W6 7AS
                 </p>
               </div>
             </div>
-            <div class="footer-column">
-              <div class="small-title"><br /></div>
-              <div class="margin-25px">
+
+            <!-- Column 4: Social/Email -->
+            <div>
+              <div
+                class="text-gold-200 mb-5 text-base font-semibold leading-7 invisible hidden md:block"
+              >
+                &nbsp;
+              </div>
+              <div class="mt-6 flex flex-col gap-2.5">
                 <a
                   href="https://www.linkedin.com/company/faved/"
-                  class="footer-link"
+                  class="text-white/70 text-base font-bold no-underline block hover:text-white transition-colors"
                   >Faved LinkedIn</a
                 >
-                <a href="mailto:brands@faved.com" class="footer-link"
+                <a
+                  href="mailto:brands@faved.com"
+                  class="text-white/70 text-base font-bold no-underline block hover:text-white transition-colors"
                   >brands@faved.com</a
                 >
-                <a href="mailto:creators@faved.com" class="footer-link"
+                <a
+                  href="mailto:creators@faved.com"
+                  class="text-white/70 text-base font-bold no-underline block hover:text-white transition-colors"
                   >creators@faved.com</a
                 >
               </div>
             </div>
           </div>
-          <div class="copyright-flex">
-            <p class="copyright">Copyright Faved</p>
-            <div class="copyright-dot"></div>
-            <p class="copyright">2025</p>
+
+          <!-- Copyright -->
+          <div class="flex justify-start items-center mt-8">
+            <p class="text-white text-base font-bold m-0">Copyright Faved</p>
+            <div class="w-1 h-1 bg-gold-200 rounded-full mx-2.5"></div>
+            <p class="text-white text-base font-bold m-0">2025</p>
           </div>
         </div>
       </footer>
     </div>
-    <script type="text/javascript">
-      // Add nav menu to mobile nav container
-      const navElement = document.getElementsByClassName("w-nav-menu")[0];
-      const cloneNavElement = navElement.cloneNode(true);
-      const mobileNavContainer = document.getElementById("m-nav-container");
-      mobileNavContainer.appendChild(cloneNavElement);
-      const secondNavElement = document.getElementsByClassName("w-nav-menu")[1];
-      secondNavElement.classList.remove("w-nav-menu");
-      secondNavElement.style.flexDirection = "column";
+
+    <!-- Mobile Menu Toggle Script -->
+    <script>
       document
         .getElementById("m-nav-button")
         .addEventListener("click", function () {
-          const x = document.getElementById("m-nav-container");
-          if (x.style.display === "block") {
-            x.style.display = "none";
-          } else {
-            x.style.display = "block";
-          }
+          const mobileMenu = document.getElementById("m-nav-container");
+          mobileMenu.classList.toggle("hidden");
         });
     </script>
   </body>
